@@ -92,7 +92,7 @@ func (result *SqlResult) strictCompare(tidbResult *SqlResult) bool {
 	}
 
 	for rowIndex, row := range queryData1 {
-		if !compareRow(rowIndex, row, queryData2[rowIndex]) {
+		if !compareRow(result.columnTypes, rowIndex, row, queryData2[rowIndex]) {
 			printColorDiff(result.String(), tidbResult.String())
 			return false
 		}
@@ -113,7 +113,7 @@ func (result *SqlResult) nonOrderCompare(result2 *SqlResult) bool {
 		hasOneEquals := false
 		for checkIndex, checked := range checkedRowArray {
 			if !checked {
-				equals := compareRow(rowIndex, row, queryData2[checkIndex])
+				equals := compareRow(result.columnTypes, rowIndex, row, queryData2[checkIndex])
 				if equals {
 					checkedRowArray[checkIndex] = true
 					hasOneEquals = true
@@ -130,28 +130,34 @@ func (result *SqlResult) nonOrderCompare(result2 *SqlResult) bool {
 }
 
 // compare two result row
-func compareRow(rowIndex int, row [][]byte, row2 [][]byte) bool {
+func compareRow(columnTypes []*sql.ColumnType, rowIndex int, row [][]byte, row2 [][]byte) bool {
 	//var line string
 	for colIndex, col := range row {
 		if len(row) != len(row2) {
 			log.Info("result column length not equals", zap.Int("db1", len(row)), zap.Int("db2", len(row2)))
 			return false
 		}
+		return compareCell(col, row2[colIndex], columnTypes[colIndex])
+	}
+	return true
+}
 
-		cv1 := string(col)
-		cv2 := string(row2[colIndex])
-		//driver not support column type
-		if cv1 != cv2 {
-			//maybe it's json
-			if (strings.HasPrefix(cv1, "{") && strings.HasPrefix(cv1, "{")) || (strings.HasPrefix(cv1, "{") && strings.HasPrefix(cv1, "{")) {
-				if !jsonEquals(cv1, cv2) {
-					log.Info("result json value not equals", zap.Int("row", rowIndex+1), zap.Int("col", colIndex+1), zap.String("cv1", cv1), zap.String("cv2", cv2))
-					return false
-				}
-			} else {
-				return false
+func compareCell(cell1 []byte, cell2 []byte, columnType *sql.ColumnType) bool {
+	cv1 := string(cell1)
+	cv2 := string(cell2)
+
+	//driver not support column type
+	if cv1 != cv2 {
+		//maybe it's json
+		if (strings.HasPrefix(cv1, "{") && strings.HasPrefix(cv1, "{")) || (strings.HasPrefix(cv1, "{") && strings.HasPrefix(cv1, "{")) {
+			if jsonEquals(cv1, cv2) {
+				log.Info("result json equals", zap.String("cv1", cv1), zap.String("cv2", cv2))
+				return true
 			}
 		}
+
+		//now check if there is a custom cell compare
+		return false
 	}
 	return true
 }
