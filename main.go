@@ -53,10 +53,10 @@ func main() {
 			}
 		}
 		for _, name := range queryLoaders {
-			queryLoader := plugin.GetDataLoader(name, conf)
+			queryLoader := plugin.GetQueryLoader(name, conf)
 			log.Info("get query loader from registry", zap.String("name", name))
 
-			for _, query := range queryLoader.LoadData() {
+			for _, query := range queryLoader.LoadQuery() {
 				log.Info("execute query %s", zap.String("query", query))
 				same, err1, err2 := compare.CompareQuery(db1, db2, query)
 				fmt.Printf("%v\n%v\n%v\n", same, err1, err2)
