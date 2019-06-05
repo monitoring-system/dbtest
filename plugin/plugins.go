@@ -24,26 +24,34 @@ func init() {
 	cellFilterMap["dummy"] = newCellFilter
 }
 
-func GetDataLoader(name string, config *config.Config) interfaces.DataLoader {
+func GetDataLoader(name string) interfaces.DataLoader {
 	f, ok := dataLoaderPluginMap[name]
 	if ok {
-		return f(config)
+		return f(config.GetConf())
 	}
 	return nil
 }
 
-func GetQueryLoader(name string, config *config.Config) interfaces.QueryLoader {
+func GetQueryLoader(name string) interfaces.QueryLoader {
 	f, ok := queryLoaderPluginMap[name]
 	if ok {
-		return f(config)
+		return f(config.GetConf())
 	}
 	return nil
 }
 
-func GetCompareLoader(name string, config *config.Config) interfaces.SqlResultComparer {
+func GetCellFilter(name string) interfaces.CellFilter {
+	f, ok := cellFilterMap[name]
+	if ok {
+		return f(config.GetConf())
+	}
+	return nil
+}
+
+func GetCompareLoader(name string) interfaces.SqlResultComparer {
 	f, ok := comparePluginMap[name]
 	if ok {
-		return f(config)
+		return f(config.GetConf())
 	}
 	return nil
 }
@@ -58,7 +66,7 @@ func newDummyQueryLoader(config *config.Config) interfaces.QueryLoader {
 	return &dummyDataLoader{}
 }
 func newStandardCompare(config *config.Config) interfaces.SqlResultComparer {
-	return &sqldiff.StandardComparer{}
+	return &sqldiff.StandardComparer{CellFilter: GetCellFilter(config.CellFilter)}
 }
 func newCellFilter(config *config.Config) interfaces.CellFilter {
 	return &dummyDataLoader{}

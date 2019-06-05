@@ -1,7 +1,6 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"go.uber.org/zap"
 	"strings"
@@ -15,35 +14,20 @@ import (
 	"github.com/pingcap/log"
 )
 
-var conf *config.Config
-
-func init() {
-	conf = &config.Config{}
-	flag.IntVar(&conf.Loop, "loop", 1, "the loop count")
-	flag.IntVar(&conf.LoopInterval, "loop-interval", 10, "the second to sleep after a loop is finished")
-	flag.StringVar(&conf.DataLoaders, "data-loaders", "dummy", "a list of data loader names split by comma")
-	flag.StringVar(&conf.QueryLoaders, "query-loaders", "dummy", "a list of query loader names split by comma")
-	flag.StringVar(&conf.Comparor, "comparor", "standard", "the compare plugin")
-	flag.StringVar(&conf.Comparor, "cell-filter", "standard", "the cell filter plugin")
-	flag.StringVar(&conf.StandardDB, "standard-db", "root:@tcp(127.0.0.1:3306)/tep?charset=utf8&parseTime=True&loc=Local", "the compare plugin")
-	flag.StringVar(&conf.TestDB, "test-db", "root:@tcp(127.0.0.1:4000)/tep?charset=utf8&parseTime=True&loc=Local", "the compare plugin")
-	flag.Parse()
-}
-
 func main() {
-	db1, _ := util.OpenDBWithRetry("mysql", conf.StandardDB)
-	db2, _ := util.OpenDBWithRetry("mysql", conf.TestDB)
+	db1, _ := util.OpenDBWithRetry("mysql", config.GetConf().StandardDB)
+	db2, _ := util.OpenDBWithRetry("mysql", config.GetConf().StandardDB)
 
-	dataLoaders := strings.Split(conf.DataLoaders, ",")
-	queryLoaders := strings.Split(conf.QueryLoaders, ",")
-	compare := plugin.GetCompareLoader(conf.Comparor, conf)
+	dataLoaders := strings.Split(config.GetConf().DataLoaders, ",")
+	queryLoaders := strings.Split(config.GetConf().QueryLoaders, ",")
+	compare := plugin.GetCompareLoader(config.GetConf().Comparor)
 
 	round := 1
 	for {
 		log.Info("start to run test", zap.Int("round", round))
 
 		for _, name := range dataLoaders {
-			dataLoader := plugin.GetDataLoader(name, conf)
+			dataLoader := plugin.GetDataLoader(name)
 			log.Info("get data loader from registry", zap.String("name", name))
 			for _, sql := range dataLoader.LoadData() {
 				log.Info("start execute sql", zap.String("sql", sql))
@@ -53,7 +37,7 @@ func main() {
 			}
 		}
 		for _, name := range queryLoaders {
-			queryLoader := plugin.GetQueryLoader(name, conf)
+			queryLoader := plugin.GetQueryLoader(name)
 			log.Info("get query loader from registry", zap.String("name", name))
 
 			for _, query := range queryLoader.LoadQuery() {
@@ -64,10 +48,10 @@ func main() {
 		}
 
 		round++
-		if round > conf.Loop {
+		if round > config.GetConf().Loop {
 			break
 		} else {
-			time.Sleep(time.Duration(time.Second * time.Duration(conf.LoopInterval)))
+			time.Sleep(time.Duration(time.Second * time.Duration(config.GetConf().LoopInterval)))
 		}
 	}
 }
