@@ -66,7 +66,7 @@ func newDummyQueryLoader(config *config.Config) interfaces.QueryLoader {
 	return &dummyDataLoader{}
 }
 func newStandardCompare(config *config.Config) interfaces.SqlResultComparer {
-	return &sqldiff.StandardComparer{CellFilter: GetCellFilter(config.CellFilter)}
+	return &sqldiff.StandardComparer{CellFilter: nil}
 }
 func newCellFilter(config *config.Config) interfaces.CellFilter {
 	return &dummyDataLoader{}
