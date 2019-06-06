@@ -6,6 +6,7 @@ require (
 	github.com/fatih/color v1.7.0
 	github.com/go-sql-driver/mysql v1.4.1
 	github.com/mattn/go-colorable v0.1.2 // indirect
+	github.com/mattn/go-sqlite3 v1.10.0
 	github.com/pingcap/log v0.0.0-20190307075452-bd41d9273596
 	github.com/prometheus/common v0.4.1
 	github.com/sergi/go-diff v1.0.0
