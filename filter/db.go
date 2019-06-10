@@ -14,20 +14,22 @@ const (
 
 var (
 	db *sql.DB
-	createTableSQL = fmt.Sprintf("create if not exists table %s (id int primary key AUTOINCREMENT, filter varchar(256) unique key, source text)", tableName)
+	createTableSQL = fmt.Sprintf("create table if not exists %s (id INTEGER  PRIMARY KEY AUTOINCREMENT, filter varchar(256), source text)", tableName)
 )
 
 func init() {
 	var err error
 	db, err = sql.Open("sqlite3", datasourceName)
 	if err != nil {
-		panic("init db failed")
+		panic(fmt.Sprintf("init db failed, err=%v", err))
 	}
 
-	db.Exec(createTableSQL)
+	if _, err = db.Exec(createTableSQL); err != nil {
+		panic(fmt.Sprintf("init db failed, err=%v", err))
+	}
 }
 
-func getFilterAndInsertIfNotExist(errcode int, keyword string, source string) bool{
+func GetFilterAndInsertIfNotExist(errcode int, keyword string, source string) bool{
 	r, err := db.Query(fmt.Sprintf("select id from %s where filter=?", tableName), buildFilterField(errcode, keyword))
 	if err != nil {
 		log.Warn("query filter failed", err)
@@ -52,7 +54,7 @@ func getFilterAndInsertIfNotExist(errcode int, keyword string, source string) bo
 }
 
 func insertFilter(errcode int, keyword string, sql string) {
-	_, err := db.Exec(fmt.Sprintf("insert into %s values (filter, source) values(?, ?)", tableName), buildFilterField(errcode, keyword), sql)
+	_, err := db.Exec(fmt.Sprintf("insert into %s (filter, source) values(?, ?)", tableName), buildFilterField(errcode, keyword), sql)
 	if err != nil {
 		log.Warn("insert filter failed", err)
 	}

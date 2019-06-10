@@ -2,7 +2,6 @@ package filter
 
 import (
 	"github.com/prometheus/common/log"
-	"k8s.io/client-go/util/retry"
 	"sync"
 )
 
@@ -25,7 +24,7 @@ type defaultFilterErrMsg struct {
 
 func (f defaultFilterErrMsg) Ignore(errMsg string, source string) bool {
 	code, msg := decodeMsg(errMsg)
-	return getFilterAndInsertIfNotExist(code, msg, source)
+	return GetFilterAndInsertIfNotExist(code, msg, source)
 }
 
 func decodeMsg(errMsg string) (int, string)  {
@@ -38,9 +37,11 @@ type defaultFilterDiff struct {
 }
 
 func (f defaultFilterDiff) Ignore(vInTiDB interface{}, vInMySQL interface{}) bool {
-	if v, ok := vInTiDB.(string); ok {
+	//if v, ok := vInTiDB.(string); ok {
+	//
+	//}
 
-	}
+	return false
 }
 
 var (

@@ -13,4 +13,6 @@ require (
 	github.com/sergi/go-diff v1.0.0
 	go.uber.org/zap v1.10.0
 	google.golang.org/appengine v1.6.0 // indirect
+	k8s.io/apimachinery v0.0.0-20190602183612-63a6072eb563 // indirect
+	k8s.io/client-go v11.0.0+incompatible
 )
