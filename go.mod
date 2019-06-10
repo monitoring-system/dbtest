@@ -9,10 +9,10 @@ require (
 	github.com/mattn/go-colorable v0.1.2 // indirect
 	github.com/mattn/go-sqlite3 v1.10.0
 	github.com/pingcap/log v0.0.0-20190307075452-bd41d9273596
+	github.com/pkg/errors v0.8.1
 	github.com/prometheus/common v0.4.1
-	github.com/sergi/go-diff v1.0.0
+	github.com/sergi/go-diff v1.0.1-0.20180205163309-da645544ed44
 	go.uber.org/zap v1.10.0
+	golang.org/x/sys v0.0.0-20190312061237-fead79001313 // indirect
 	google.golang.org/appengine v1.6.0 // indirect
-	k8s.io/apimachinery v0.0.0-20190602183612-63a6072eb563 // indirect
-	k8s.io/client-go v11.0.0+incompatible
 )
