@@ -1,12 +1,12 @@
 package filter
 
 import (
+	"database/sql"
 	"github.com/prometheus/common/log"
 	"sync"
 )
 
 type Filter interface {
-
 }
 
 type FilterErrMsg interface {
@@ -14,12 +14,10 @@ type FilterErrMsg interface {
 }
 
 type FilterDiff interface {
-	Ignore(vInTiDB interface{}, vInMySQL interface{}) bool
+	Ignore(vInTiDB interface{}, vInMySQL interface{}, colType *sql.ColumnType) bool
 }
 
-
 type defaultFilterErrMsg struct {
-
 }
 
 func (f defaultFilterErrMsg) Ignore(errMsg string, source string) bool {
@@ -27,16 +25,15 @@ func (f defaultFilterErrMsg) Ignore(errMsg string, source string) bool {
 	return GetFilterAndInsertIfNotExist(code, msg, source)
 }
 
-func decodeMsg(errMsg string) (int, string)  {
+func decodeMsg(errMsg string) (int, string) {
 	return -1, ""
-	
+
 }
 
 type defaultFilterDiff struct {
-
 }
 
-func (f defaultFilterDiff) Ignore(vInTiDB interface{}, vInMySQL interface{}) bool {
+func (f defaultFilterDiff) Ignore(vInTiDB interface{}, vInMySQL interface{}, colType *sql.ColumnType) bool {
 	//if v, ok := vInTiDB.(string); ok {
 	//
 	//}
@@ -46,8 +43,8 @@ func (f defaultFilterDiff) Ignore(vInTiDB interface{}, vInMySQL interface{}) boo
 
 var (
 	errMsgFilters = make([]FilterErrMsg, 0)
-	diffFilters = make([]FilterDiff, 0)
-	mux sync.Mutex
+	diffFilters   = make([]FilterDiff, 0)
+	mux           sync.Mutex
 )
 
 func RegisterFilters() {
@@ -56,10 +53,6 @@ func RegisterFilters() {
 
 	errMsgFilters = []FilterErrMsg{defaultFilterErrMsg{}}
 	diffFilters = []FilterDiff{defaultFilterDiff{}}
-
-
-
-
 
 }
 
@@ -85,7 +78,7 @@ func UnResiterFilters() {
 	diffFilters = []FilterDiff{defaultFilterDiff{}}
 }
 
-func FilterError(errMsg string, source string) bool{
+func FilterError(errMsg string, source string) bool {
 	for _, f := range errMsgFilters {
 		if f.Ignore(errMsg, source) {
 			return true
@@ -95,9 +88,9 @@ func FilterError(errMsg string, source string) bool{
 	return false
 }
 
-func FilterCompareDiff(vInTiDB interface{}, vInMySQL interface{}) bool {
+func FilterCompareDiff(vInTiDB interface{}, vInMySQL interface{}, colType *sql.ColumnType) bool {
 	for _, f := range diffFilters {
-		if f.Ignore(vInTiDB, vInMySQL) {
+		if f.Ignore(vInTiDB, vInMySQL, colType) {
 			return true
 		}
 	}

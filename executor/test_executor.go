@@ -21,7 +21,6 @@ type TestConfig struct {
 	DataLoaders  string `json:"dataLoaders,omitempty"`
 	QueryLoaders string `json:"queryLoaders,omitempty"`
 	Comparor     string `json:"comparor,omitempty"`
-	CellFilter   string `json:"cellFilter,omitempty"`
 
 	Loop         int `json:"loop,omitempty"`
 	LoopInterval int `json:"loopInterval,omitempty"`

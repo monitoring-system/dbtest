@@ -5,19 +5,18 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"github.com/monitoring-system/dbtest/filter"
 	"reflect"
 	"strings"
 
 	"github.com/fatih/color"
-	"github.com/monitoring-system/dbtest/interfaces"
 	"github.com/pingcap/log"
 	"github.com/sergi/go-diff/diffmatchpatch"
 	"go.uber.org/zap"
 )
 
 type StandardComparer struct {
-	Strict     bool
-	CellFilter interfaces.CellFilter
+	Strict bool
 }
 
 func (c *StandardComparer) CompareQuery(db1, db2 *sql.DB, query string) (bool, error, error) {
@@ -112,10 +111,7 @@ func (c *StandardComparer) compareCell(cell1 []byte, cell2 []byte, columnType *s
 		}
 
 		//now check if there is a custom cell compare
-		if c.CellFilter != nil {
-			return c.CellFilter.Filter(cell1, cell2, columnType)
-		}
-		return false
+		return filter.FilterCompareDiff(cell1, cell2, columnType)
 	}
 	return true
 }
