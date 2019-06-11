@@ -1,81 +1,86 @@
 package executor
 
 import (
+	"database/sql"
 	"fmt"
+	"github.com/go-sql-driver/mysql"
+	"github.com/monitoring-system/dbtest/interfaces"
 	"strings"
 	"time"
 
 	"github.com/monitoring-system/dbtest/config"
-	"github.com/monitoring-system/dbtest/plugin"
 	"github.com/monitoring-system/dbtest/sqldiff"
 	"github.com/monitoring-system/dbtest/util"
 
 	"github.com/pingcap/log"
+	"github.com/satori/go.uuid"
 	"go.uber.org/zap"
 )
 
 type Executor struct {
+	MySQL *sql.DB
+	TiDB  *sql.DB
 }
 
-type TestConfig struct {
-	DataLoaders  string `json:"dataLoaders,omitempty"`
-	QueryLoaders string `json:"queryLoaders,omitempty"`
-	Comparor     string `json:"comparor,omitempty"`
-
-	Loop         int `json:"loop,omitempty"`
-	LoopInterval int `json:"loopInterval,omitempty"`
+type TestConfig interface {
+	GetDataLoaders() []interfaces.DataLoader
+	GetQueryLoaders() []interfaces.QueryLoader
+	GetComparor() interfaces.SqlResultComparer
+	GetLoop() int
+	GetLoopInterval() int
 }
 
-func (executor *Executor) Submit(test *TestConfig) {
+func (executor *Executor) Submit(test TestConfig) {
 	go executor.run(test)
 }
 
-func (executor *Executor) run(test *TestConfig) {
-	db1, _ := util.OpenDBWithRetry("mysql", config.GetConf().StandardDB)
-	db2, _ := util.OpenDBWithRetry("mysql", config.GetConf().StandardDB)
+func (executor *Executor) run(test TestConfig) {
 
-	dataLoaders := strings.Split(test.DataLoaders, ",")
-	queryLoaders := strings.Split(test.QueryLoaders, ",")
-	compare := plugin.GetCompareLoader(test.Comparor)
-
+	compare := test.GetComparor()
 	round := 1
 	for {
-		log.Info("start to run test", zap.Int("round", round))
+		func() {
+			dbName := "tbl" + strings.ReplaceAll(uuid.NewV4().String(), "-", "")
+			executor.MySQL.Exec("CREATE DATABASE IF NOT EXISTS  " + dbName)
+			executor.TiDB.Exec("CREATE DATABASE IF NOT EXISTS  " + dbName)
+			defer executor.MySQL.Exec("DROP DATABASE IF EXISTS  " + dbName)
+			defer executor.TiDB.Exec("DROP DATABASE IF EXISTS  " + dbName)
 
-		for _, name := range dataLoaders {
-			dataLoader := plugin.GetDataLoader(name)
-			if dataLoader == nil {
-				log.Warn("can not found the data loader from registry", zap.String("name", name))
-				continue
-			}
-			log.Info("get data loader from registry", zap.String("name", name))
-			for _, sql := range dataLoader.LoadData() {
-				log.Info("start execute sql", zap.String("sql", sql))
-				r1, _ := sqldiff.GetQueryResult(db1, sql)
-				r2, _ := sqldiff.GetQueryResult(db1, sql)
-				fmt.Printf("%v\n%v\n", r1, r2)
-			}
-		}
-		for _, name := range queryLoaders {
-			queryLoader := plugin.GetQueryLoader(name)
-			if queryLoader == nil {
-				log.Warn("can not found the query loader from registry", zap.String("name", name))
-				continue
-			}
-			log.Info("get query loader from registry", zap.String("name", name))
+			cfg, _ := mysql.ParseDSN(config.GetConf().StandardDB)
+			cfg.DBName = dbName
+			db1, _ := util.OpenDBWithRetry("mysql", cfg.FormatDSN())
+			cfg, _ = mysql.ParseDSN(config.GetConf().TestDB)
+			cfg.DBName = dbName
+			db2, _ := util.OpenDBWithRetry("mysql", cfg.FormatDSN())
+			defer db1.Close()
+			defer db2.Close()
 
-			for _, query := range queryLoader.LoadQuery() {
-				log.Info("execute query %s", zap.String("query", query))
-				same, err1, err2 := compare.CompareQuery(db1, db2, query)
-				fmt.Printf("%v\n%v\n%v\n", same, err1, err2)
+			log.Info("start to run test", zap.Int("round", round))
+
+			for _, dataLoader := range test.GetDataLoaders() {
+				log.Info("using data loader to load data", zap.String("name", dataLoader.Name()))
+				for _, statement := range dataLoader.LoadData(dbName) {
+					log.Info("start execute statement", zap.String("statement", statement))
+					/*r1, _ := */ sqldiff.GetQueryResult(db1, statement)
+					/*r2, _ := */ sqldiff.GetQueryResult(db1, statement)
+					//fmt.Printf("%v\n%v\n", r1, r2)
+				}
 			}
-		}
+			for _, queryLoader := range test.GetQueryLoaders() {
+				log.Info("load queries", zap.String("name", queryLoader.Name()))
+				for _, query := range queryLoader.LoadQuery(dbName) {
+					log.Info("execute query %s", zap.String("query", query))
+					same, err1, err2 := compare.CompareQuery(db1, db2, query)
+					fmt.Printf("%v\n%v\n%v\n", same, err1, err2)
+				}
+			}
+		}()
 
 		round++
-		if round > test.Loop {
+		if round > test.GetLoop() {
 			break
 		} else {
-			time.Sleep(time.Duration(time.Second * time.Duration(test.LoopInterval)))
+			time.Sleep(time.Duration(time.Second * time.Duration(test.GetLoopInterval())))
 		}
 	}
 }

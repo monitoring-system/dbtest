@@ -1,5 +1,6 @@
 package interfaces
 
 type DataLoader interface {
-	LoadData() []string
+	LoadData(string) []string
+	Name() string
 }
