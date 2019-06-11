@@ -60,16 +60,22 @@ func (executor *Executor) run(test TestConfig) {
 			for _, dataLoader := range test.GetDataLoaders() {
 				log.Info("using data loader to load data", zap.String("name", dataLoader.Name()))
 				for _, statement := range dataLoader.LoadData(dbName) {
+					if statement == "" || len(statement) == 0 {
+						continue
+					}
 					log.Info("start execute statement", zap.String("statement", statement))
-					/*r1, _ := */ sqldiff.GetQueryResult(db1, statement)
-					/*r2, _ := */ sqldiff.GetQueryResult(db1, statement)
-					//fmt.Printf("%v\n%v\n", r1, r2)
+					r1, err1 := sqldiff.GetQueryResult(db1, statement)
+					r2, err2 := sqldiff.GetQueryResult(db2, statement)
+					fmt.Printf("%v\n%v\n%v\n%v\n", r1, r2, err1, err2)
 				}
 			}
 			for _, queryLoader := range test.GetQueryLoaders() {
 				log.Info("load queries", zap.String("name", queryLoader.Name()))
 				for _, query := range queryLoader.LoadQuery(dbName) {
-					log.Info("execute query %s", zap.String("query", query))
+					if query == "" || len(query) == 0 {
+						continue
+					}
+					log.Info("execute query", zap.String("query", query))
 					same, err1, err2 := compare.CompareQuery(db1, db2, query)
 					fmt.Printf("%v\n%v\n%v\n", same, err1, err2)
 				}
