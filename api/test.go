@@ -5,6 +5,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/monitoring-system/dbtest/executor"
 	"github.com/monitoring-system/dbtest/filter"
+	"github.com/monitoring-system/dbtest/plugin/randgen"
 	"net/http"
 )
 
@@ -17,7 +18,7 @@ func NewServer(executor *executor.Executor) *server {
 }
 
 func (server *server) NewTest(c *gin.Context) {
-	test := &executor.TestConfig{}
+	test := &randgen.RandGen{}
 	if err := c.ShouldBind(test); err != nil {
 		c.JSON(http.StatusBadRequest, NewErrorResponse(err.Error()))
 	}
