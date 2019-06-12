@@ -6,7 +6,6 @@ import (
 	"github.com/monitoring-system/dbtest/executor"
 	"github.com/monitoring-system/dbtest/filter"
 	"net/http"
-	"os"
 )
 
 type server struct {
@@ -33,7 +32,6 @@ func (server *server) AddFilter(c *gin.Context) {
 		return
 	}
 
-	os.Mkdir(filter.FilterPATH, os.ModePerm)
 	filename := fmt.Sprintf("%s/%s", filter.FilterPATH, h.Filename)
 
 	if err := c.SaveUploadedFile(h, filename); err != nil {

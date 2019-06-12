@@ -6,6 +6,7 @@ import (
 	"github.com/prometheus/common/log"
 	"go.uber.org/zap"
 	"io/ioutil"
+	"os"
 	"reflect"
 	"strconv"
 	"strings"
@@ -69,6 +70,8 @@ var (
 )
 
 func init() {
+	os.Mkdir(FilterPATH, os.ModePerm)
+
 	errMsgType = reflect.TypeOf(errMsgFilter)
 	diffType = reflect.TypeOf(diffFilter)
 
@@ -115,7 +118,7 @@ func floatRound(f float64, n int) float64 {
 }
 
 func toFload64(v interface{}) float64{
-	f, err := strconv.ParseFloat(fmt.Sprintf("%s", v), 64)
+	f, err := strconv.ParseFloat(fmt.Sprintf("%v", v), 64)
 	if err != nil {
 		log.Error("convert float64 failed", zap.Error(err))
 		return 0
