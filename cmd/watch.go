@@ -1,30 +1,27 @@
-package main
+package cmd
 
 import (
 	"encoding/json"
 	"fmt"
 	tm "github.com/buger/goterm"
 	"github.com/monitoring-system/dbtest/api/types"
+	"github.com/spf13/cobra"
 	"io/ioutil"
 	"net/http"
 	"time"
-	//"github.com/spf13/cobra"
 )
 
-func main() {
-	//var rootCmd = &cobra.Command{
-	//	Use:   "hugo",
-	//	Short: "Hugo is a very fast static site generator",
-	//	Long: `A Fast and Flexible Static Site Generator built with
-	//            love by spf13 and friends in Go.
-	//            Complete documentation is available at http://hugo.spf13.com`,
-	//	Run: func(cmd *cobra.Command, args []string) {
-	//		// Do Stuff Here
-	//	},
-	//}
+var WatchTestCmd = &cobra.Command{
+	Use:   "watch [watch tests]",
+	Short: "watch test",
+	Long:  "watch test",
+	Args:  cobra.MinimumNArgs(0),
+	Run: func(cmd *cobra.Command, args []string) {
+		watchTest()
+	},
+}
 
-	tm.Clear() // Clear current screen
-
+func watchTest() {
 	for {
 		// By moving cursor to top-left position we ensure that console output
 		// will be overwritten each time, instead of adding new.
