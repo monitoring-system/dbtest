@@ -2,30 +2,25 @@ package db
 
 import (
 	"fmt"
-	_ "github.com/mattn/go-sqlite3"
 	"github.com/prometheus/common/log"
 
 	"github.com/jinzhu/gorm"
 )
 
 const (
-	datasourceName  = "test.db"
 	filterTableName = "filters"
 )
 
 var db *gorm.DB
 
-var createTable = fmt.Sprintf("create table if not exists %s (id INTEGER  PRIMARY KEY AUTOINCREMENT, filter varchar(256), source text)", filterTableName)
-
-func init() {
+func InitDatabase(dsn string, models []interface{}) {
 	var err error
-	db, err = gorm.Open("sqlite3", datasourceName)
+	db, err = gorm.Open("mysql", dsn)
 	if err != nil {
 		panic(fmt.Sprintf("init db failed, err=%ver", err))
 	}
-
-	if _, err = db.DB().Exec(createTable); err != nil {
-		panic(fmt.Sprintf("init db failed, err=%v", err))
+	for _, model := range models {
+		db.AutoMigrate(model)
 	}
 }
 

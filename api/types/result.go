@@ -13,10 +13,6 @@ const (
 	TestStatusFail string = "fail"
 )
 
-func init() {
-	db.GetDB().AutoMigrate(&TestResult{})
-}
-
 type TestResult struct {
 	ID              int64 `json:"id",gorm:"primary_key"`
 	TestID          int64

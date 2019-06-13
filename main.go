@@ -3,8 +3,11 @@ package main
 import (
 	"fmt"
 	"github.com/gin-gonic/gin"
+	"github.com/go-sql-driver/mysql"
 	"github.com/monitoring-system/dbtest/api"
+	"github.com/monitoring-system/dbtest/api/types"
 	"github.com/monitoring-system/dbtest/config"
+	"github.com/monitoring-system/dbtest/db"
 	"github.com/monitoring-system/dbtest/executor"
 	"github.com/monitoring-system/dbtest/util"
 	"github.com/pingcap/log"
@@ -28,6 +31,7 @@ func main() {
 		panic(fmt.Sprintf("init logger failed, err=%v", err))
 	}
 
+	initDatabase(config.GetConf().StandardDB)
 	engine := gin.Default()
 
 	MySQL, err1 := util.OpenDBWithRetry("mysql", config.GetConf().StandardDB)
@@ -47,4 +51,23 @@ func main() {
 	engine.POST("/addfilter", server.AddFilter)
 	log.Fatal("start server failed", zap.String("err", engine.Run("0.0.0.0:8080").Error()))
 
+}
+
+var models = []interface{}{&types.Test{}, &types.TestResult{}, &types.LoopResult{}}
+
+func initDatabase(dsn string) {
+	cfg, err := mysql.ParseDSN(dsn)
+	if err != nil {
+		panic("can not parse the mysql configuration")
+	}
+	if cfg.DBName == "" {
+		db, err := util.OpenDBWithRetry("mysql", cfg.FormatDSN())
+		if err != nil {
+			panic("can not connect to database")
+		}
+		db.Exec("create database if not exists dbtest")
+		db.Close()
+		cfg.DBName = "dbtest"
+	}
+	db.InitDatabase(cfg.FormatDSN(), models)
 }

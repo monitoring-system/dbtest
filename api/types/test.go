@@ -19,17 +19,13 @@ type Test struct {
 	Loop         int    `json:"loop"`
 	LoopInterval int    `json:"loopInterval"`
 
-	Yy      string `json:"yy"`
-	ZZ      string `json:"zz"`
+	Yy      string `gorm:"type:TEXT;"`
+	Zz      string `gorm:"type:TEXT;"`
 	Queries int    `json:"queries"`
 
 	locker sync.RWMutex
 	data   []string
 	query  []string
-}
-
-func init() {
-	db.GetDB().AutoMigrate(&Test{})
 }
 
 //persistent the result and set the id
@@ -95,7 +91,7 @@ func (test *Test) GetLoopInterval() int {
 }
 
 func getLoadDataResponse(randgen *Test, db string) *LoadDataResponse {
-	payload := &LoadDataRequest{Yy: randgen.Yy, ZZ: randgen.ZZ, DB: db, Queries: randgen.Queries}
+	payload := &LoadDataRequest{Yy: randgen.Yy, ZZ: randgen.Zz, DB: db, Queries: randgen.Queries}
 	resp, err := http.Post("http://localhost:9080/loaddata", "application/json",
 		strings.NewReader(getLoadDataRequestString(payload)))
 	if err != nil || resp == nil {
