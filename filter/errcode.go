@@ -1,6 +1,6 @@
 package filter
 
-// MySQL error code.
+// mysql error code.
 // This value is numeric. It is not portable to other database systems.
 const (
 	ErrErrorFirst                                            uint16 = 1000

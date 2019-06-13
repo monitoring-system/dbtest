@@ -3,11 +3,12 @@ package api
 import (
 	"fmt"
 	"github.com/gin-gonic/gin"
+	"github.com/monitoring-system/dbtest/api/types"
 	"github.com/monitoring-system/dbtest/executor"
 	"github.com/monitoring-system/dbtest/filter"
-	"github.com/monitoring-system/dbtest/plugin/randgen"
 	"net/http"
 	"os"
+	"strconv"
 )
 
 type server struct {
@@ -19,12 +20,62 @@ func NewServer(executor *executor.Executor) *server {
 }
 
 func (server *server) NewTest(c *gin.Context) {
-	test := &randgen.RandGen{}
+	test := &types.Test{}
 	if err := c.ShouldBind(test); err != nil {
 		c.JSON(http.StatusBadRequest, NewErrorResponse(err.Error()))
 	}
-	server.executor.Submit(test)
-	c.JSON(http.StatusOK, NewOKResponse())
+	result, err := server.executor.Submit(test)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, NewErrorResponse(err.Error()))
+	} else {
+		c.JSON(http.StatusOK, result)
+	}
+}
+
+func (server *server) ListTest(c *gin.Context) {
+	list, err := types.ListTest()
+	if err != nil {
+		c.JSON(http.StatusBadRequest, NewErrorResponse(err.Error()))
+	} else {
+		c.JSON(http.StatusOK, list)
+	}
+}
+
+func (server *server) GetTest(c *gin.Context) {
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, NewErrorResponse(err.Error()))
+	} else {
+		result, err := types.GetTestById(id)
+		if err != nil {
+			c.JSON(http.StatusNotFound, NewErrorResponse(err.Error()))
+		} else {
+			c.JSON(http.StatusOK, result)
+		}
+	}
+}
+
+func (server *server) ListTestResult(c *gin.Context) {
+	list, err := types.ListResult()
+	if err != nil {
+		c.JSON(http.StatusBadRequest, NewErrorResponse(err.Error()))
+	} else {
+		c.JSON(http.StatusOK, list)
+	}
+}
+
+func (server *server) ListLoopResult(c *gin.Context) {
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, NewErrorResponse(err.Error()))
+	} else {
+		result, err := types.ListLoopResult(id)
+		if err != nil {
+			c.JSON(http.StatusNotFound, NewErrorResponse(err.Error()))
+		} else {
+			c.JSON(http.StatusOK, result)
+		}
+	}
 }
 
 func (server *server) AddFilter(c *gin.Context) {

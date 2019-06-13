@@ -35,13 +35,15 @@ func main() {
 	if err1 != nil || err2 != nil {
 		log.Fatal("can not connect to db", zap.Error(err1), zap.Error(err2))
 	}
-	exec := &executor.Executor{
-		MySQL: MySQL,
-		TiDB:  TiDB,
-	}
-	server := api.NewServer(exec)
 
-	engine.POST("/test", server.NewTest)
+	server := api.NewServer(executor.New(MySQL, TiDB))
+
+	engine.POST("/tests", server.NewTest)
+	engine.GET("/tests", server.ListTest)
+	engine.GET("/tests/:id", server.GetTest)
+	engine.GET("/results", server.ListTestResult)
+	engine.GET("/results/:id/detail", server.ListLoopResult)
+
 	engine.POST("/addfilter", server.AddFilter)
 	log.Fatal("start server failed", zap.String("err", engine.Run("0.0.0.0:8080").Error()))
 
