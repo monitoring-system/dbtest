@@ -16,6 +16,7 @@ require (
 	github.com/prometheus/common v0.4.1
 	github.com/satori/go.uuid v1.2.0
 	github.com/sergi/go-diff v1.0.1-0.20180205163309-da645544ed44
+	github.com/xwb1989/sqlparser v0.0.0-20180606152119-120387863bf2
 	go.uber.org/zap v1.10.0
 	golang.org/x/sys v0.0.0-20190312061237-fead79001313 // indirect
 	google.golang.org/appengine v1.6.0 // indirect
