@@ -2,6 +2,7 @@ package filter
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"github.com/prometheus/common/log"
 	"go.uber.org/zap"
@@ -11,6 +12,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 )
 
 const (
@@ -97,6 +99,7 @@ func loadDefaultErrMsgFilters() {
 
 func loadDefaultDiffFilters() {
 	RegisterDiffFilter(filterNumberPercision)
+	RegisterDiffFilter(filterZero)
 }
 
 func filterNumberPercision(vInTiDB interface{}, vInMySQL interface{}, colType *sql.ColumnType) bool {
@@ -126,5 +129,70 @@ func toFload64(v interface{}) float64{
 
 	return f
 }
+
+func filterZero(vInTiDB interface{}, vInMySQL interface{}, colType *sql.ColumnType) bool {
+	t, ok := typeForMysqlToGo[strings.ToLower(colType.DatabaseTypeName())]
+	if !ok {
+		log.Warn("Unsupport type", zap.String("type", colType.DatabaseTypeName()))
+		return false
+	}
+
+
+	if isZero(vInTiDB.([]byte), t) && isZero(vInMySQL.([]byte), t) {
+		return true
+	}
+
+	 //colType.ScanType()
+	 return false
+}
+
+func isZero(v []byte, t reflect.Type) bool {
+	value := reflect.Zero(t).Interface()
+	json.Unmarshal(v, &value)
+	if value == reflect.Zero(t).Interface() || value == nil {
+		return true
+	}
+
+	return false
+}
+
+var typeForMysqlToGo = map[string]reflect.Type{
+	"int":                reflect.TypeOf(0),
+	"integer":            reflect.TypeOf(0),
+	"tinyint":            reflect.TypeOf(0),
+	"smallint":           reflect.TypeOf(0),
+	"mediumint":          reflect.TypeOf(0),
+	"bigint":             reflect.TypeOf(0),
+	"int unsigned":       reflect.TypeOf(0),
+	"integer unsigned":   reflect.TypeOf(0),
+	"tinyint unsigned":   reflect.TypeOf(0),
+	"smallint unsigned":  reflect.TypeOf(0),
+	"mediumint unsigned": reflect.TypeOf(0),
+	"bigint unsigned":    reflect.TypeOf(0),
+	"bit":                reflect.TypeOf(0),
+	"bool":               reflect.TypeOf(false),
+	"enum":               reflect.TypeOf(""),
+	"set":                reflect.TypeOf(""),
+	"varchar":            reflect.TypeOf(""),
+	"char":               reflect.TypeOf(""),
+	"tinytext":           reflect.TypeOf(""),
+	"mediumtext":         reflect.TypeOf(""),
+	"text":               reflect.TypeOf(""),
+	"longtext":           reflect.TypeOf(""),
+	"blob":               reflect.TypeOf(""),
+	"tinyblob":           reflect.TypeOf(""),
+	"mediumblob":         reflect.TypeOf(""),
+	"longblob":           reflect.TypeOf(""),
+	"date":               reflect.TypeOf(time.Now()), // time.Time or string
+	"datetime":           reflect.TypeOf(time.Now()), // time.Time or string
+	"timestamp":          reflect.TypeOf(time.Now()), // time.Time or string
+	"time":               reflect.TypeOf(time.Now()), // time.Time or string
+	"float":              reflect.TypeOf(float64(0)),
+	"double":             reflect.TypeOf(float64(0)),
+	"decimal":            reflect.TypeOf(float64(0)),
+	"binary":             reflect.TypeOf(""),
+	"varbinary":          reflect.TypeOf(""),
+}
+
 
 
