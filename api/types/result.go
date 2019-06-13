@@ -8,7 +8,9 @@ const (
 	TestStatusPending string = "pending"
 	TestStatusRunning string = "running"
 	TestStatusDone    string = "done"
-	TestStatusFail    string = "fail"
+
+	TestStatusOK   string = "OK"
+	TestStatusFail string = "fail"
 )
 
 func init() {
@@ -16,11 +18,14 @@ func init() {
 }
 
 type TestResult struct {
-	ID     int64 `json:"id",gorm:"primary_key"`
-	TestID int64
-	Name   string
-	Status string
-	Loop   int
+	ID              int64 `json:"id",gorm:"primary_key"`
+	TestID          int64
+	Name            string
+	Status          string
+	FailedLoopCount int
+	Loop            int
+	Start           int64
+	End             int64
 }
 
 //persistent the result and set the id

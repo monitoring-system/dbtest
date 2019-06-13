@@ -19,22 +19,27 @@ func main() {
 		tm.MoveCursor(1, 1)
 
 		results := getTestResult()
-		totals := tm.NewTable(0, 10, 5, ' ', 0)
-		fmt.Fprintf(totals, "TestID\tTestName\tLoop\tStatus\n")
+		totals := tm.NewTable(0, 4, 4, ' ', 0)
+		fmt.Fprintf(totals, "TestID\tTestName\tLoop\tStatus\tFailed\tDuration\n")
 
 		for _, result := range results {
 			var color string
+			var duration int64 = 0
 			switch result.Status {
 			case types.TestStatusRunning:
 				color = tm.Color(result.Status, tm.BLUE)
+				duration = time.Now().Unix() - result.Start
 			case types.TestStatusDone:
-				color = tm.Color(result.Status, tm.GREEN)
+				if result.FailedLoopCount > 0 {
+					color = tm.Color(result.Status, tm.RED)
+				} else {
+					color = tm.Color(result.Status, tm.GREEN)
+				}
+				duration = result.End - result.Start
 			case types.TestStatusPending:
 				color = tm.Color(result.Status, tm.YELLOW)
-			case types.TestStatusFail:
-				color = tm.Color(result.Status, tm.RED)
 			}
-			fmt.Fprintf(totals, "%d\t%s\t%d\t%s\n", result.TestID, result.Name, result.Loop, color)
+			fmt.Fprintf(totals, "%d\t%s\t%d\t%s\t\t%d\t%d\n", result.TestID, result.Name, result.Loop, color, result.FailedLoopCount, duration)
 		}
 		tm.Println(totals)
 

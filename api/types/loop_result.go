@@ -1,12 +1,20 @@
 package types
 
-import "github.com/monitoring-system/dbtest/db"
+import (
+	"github.com/monitoring-system/dbtest/db"
+)
 
 type LoopResult struct {
-	ID     int64 `json:"id",gorm:"primary_key"`
-	TestID int64
-	Detail string
-	Loop   int
+	ID          int64 `json:"id",gorm:"primary_key"`
+	TestID      int64
+	Loop        int
+	Status      string
+	Start       int64
+	End         int64
+	DML         string `gorm:"text"`
+	Query       string `gorm:"text"`
+	FailedDML   string `gorm:"text"`
+	FailedQuery string `gorm:"text"`
 }
 
 func init() {
