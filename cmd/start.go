@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"flag"
 	"github.com/gin-gonic/gin"
 	"github.com/go-sql-driver/mysql"
 	"github.com/monitoring-system/dbtest/api"
@@ -22,6 +23,13 @@ var StartCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		StartServer()
 	},
+}
+
+func init() {
+	config.Conf = &config.Config{}
+	StartCmd.Flags().StringVar(&config.Conf.StandardDB, "standard-db", "root:@tcp(127.0.0.1:3306)/?charset=utf8&parseTime=True&loc=Local", "the compare plugin")
+	StartCmd.Flags().StringVar(&config.Conf.TestDB, "test-db", "root:@tcp(127.0.0.1:4000)/?charset=utf8&parseTime=True&loc=Local", "the compare plugin")
+	flag.Parse()
 }
 
 func StartServer() {
