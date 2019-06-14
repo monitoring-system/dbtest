@@ -15,9 +15,9 @@ import (
 )
 
 var StartCmd = &cobra.Command{
-	Use:   "StartServer [options ]",
-	Short: "StartServer the db test web server",
-	Long:  "StartServer the db test web server",
+	Use:   "start [options ]",
+	Short: "start the db test web server",
+	Long:  "start the db test web server",
 	Args:  cobra.MinimumNArgs(0),
 	Run: func(cmd *cobra.Command, args []string) {
 		StartServer()
