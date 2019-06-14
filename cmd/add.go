@@ -89,7 +89,7 @@ func (c *RandgenConfOpt) Add() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	payload := &types.Test{TestName: c.Name, Yy: string(yyContent), Zz: string(zzContent), Loop: c.conf.loop, LoopInterval: c.LoopInterval, QueryLoader: c.QueryLoader, DataLoader: c.DataLoader}
+	payload := &types.Test{TestName: c.Name, Yy: string(yyContent), Zz: string(zzContent), Loop: c.conf.loop, LoopInterval: c.LoopInterval, QueryLoader: c.QueryLoader, DataLoader: c.DataLoader, Queries: queryCount}
 	resp, err := http.Post("http://localhost:8080/tests", "application/json",
 		strings.NewReader(getPayload(payload)))
 
