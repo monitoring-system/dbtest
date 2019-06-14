@@ -11,8 +11,8 @@ type LoopResult struct {
 	Status string
 	Start  int64
 	End    int64
-	DML    string `gorm:"type:longtext;"`
-	Query  string `gorm:"type:longtext;"`
+	//DML    string `gorm:"type:longtext;"`
+	//Query  string `gorm:"type:longtext;"`
 }
 
 //persistent the result and set the id

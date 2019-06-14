@@ -93,8 +93,8 @@ func (executor *Executor) run(test *types.Test, result *types.TestResult) {
 
 			log.Info("start to run test", zap.String("TestName", test.TestName), zap.Int64("TestId", test.ID), zap.Int("round", round), zap.String("dbName", dbName))
 			logger.Println("dbName", dbName)
-			executor.execDML(scope)
-			executor.execQuery(scope)
+			data := executor.execDML(scope)
+			query := executor.execQuery(scope)
 
 			loopResult.End = time.Now().Unix()
 			if err := loopResult.Persistent(); err != nil {
@@ -102,6 +102,12 @@ func (executor *Executor) run(test *types.Test, result *types.TestResult) {
 			}
 			if loopResult.Status != types.TestStatusOK {
 				result.FailedLoopCount++
+				logger.Println("test case failed")
+				logger.Println(data.String())
+				logger.Println("===============")
+				logger.Println(query.String())
+			} else {
+				logger.Println("test case OK")
 			}
 			if err := result.Update(); err != nil {
 				log.Warn("update result failed", zap.Error(err))
@@ -122,7 +128,7 @@ func (executor *Executor) run(test *types.Test, result *types.TestResult) {
 	}
 }
 
-func (executor *Executor) execQuery(scope *testScope) {
+func (executor *Executor) execQuery(scope *testScope) *bytes.Buffer {
 	compare := scope.test.GetComparor()
 	var queryBuf = bytes.Buffer{}
 	for _, queryLoader := range scope.test.GetQueryLoaders() {
@@ -137,7 +143,7 @@ func (executor *Executor) execQuery(scope *testScope) {
 			}
 
 			queryBuf.WriteString(query)
-			queryBuf.WriteString(";")
+			queryBuf.WriteString(";\n")
 			log.Info("execute query", zap.Int64("testId", scope.test.ID), zap.String("query", query))
 			same, err1, err2 := compare.CompareQuery(scope.db1, scope.db2, query)
 			if putIgnoreTable(scope.logger, parsed, scope.ignoreTables, err1) {
@@ -158,10 +164,10 @@ func (executor *Executor) execQuery(scope *testScope) {
 			}
 		}
 	}
-	scope.loopResult.Query = queryBuf.String()
+	return &queryBuf
 }
 
-func (executor *Executor) execDML(scope *testScope) {
+func (executor *Executor) execDML(scope *testScope) *bytes.Buffer {
 	var dataBUf = bytes.Buffer{}
 	for _, dataLoader := range scope.test.GetDataLoaders() {
 		log.Info("using data loader to load data", zap.Int64("testId", scope.test.ID), zap.String("name", dataLoader.Name()))
@@ -176,7 +182,7 @@ func (executor *Executor) execDML(scope *testScope) {
 			}
 
 			dataBUf.WriteString(statement)
-			dataBUf.WriteString(";")
+			dataBUf.WriteString("\n;")
 			log.Info("start execute statement", zap.Int64("testId", scope.test.ID), zap.String("statement", statement))
 			r1, err1 := sqldiff.GetQueryResult(scope.db1, statement)
 			if putIgnoreTable(scope.logger, parsed, scope.ignoreTables, err1) {
@@ -191,7 +197,7 @@ func (executor *Executor) execDML(scope *testScope) {
 			}
 		}
 	}
-	scope.loopResult.DML = dataBUf.String()
+	return &dataBUf
 }
 
 func putIgnoreTable(logger *golog.Logger, parsed *parser.Result, ignored *util.Set, err error) bool {
