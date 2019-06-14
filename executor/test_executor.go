@@ -14,6 +14,8 @@ import (
 	"github.com/pingcap/log"
 	"github.com/satori/go.uuid"
 	"go.uber.org/zap"
+	golog "log"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -55,23 +57,29 @@ type testScope struct {
 	db1          *sql.DB
 	db2          *sql.DB
 	ignoreTables *util.Set
+	logger       *golog.Logger
 }
-
-var sqlCount = 0
 
 func (executor *Executor) run(test *types.Test, result *types.TestResult) {
 	round := 1
 	for {
 		func() {
-			sqlCount = 0
+			logger, file, err := initLogger(test, round)
+			if err != nil {
+				loopResult := &types.LoopResult{TestID: test.ID, Loop: round, Start: time.Now().Unix(), Status: types.TestStatusSkip}
+				loopResult.Persistent()
+				return
+			}
+			defer file.Close()
+
 			loopResult := &types.LoopResult{TestID: test.ID, Loop: round, Start: time.Now().Unix(), Status: types.TestStatusOK}
 			result.Loop += 1
 			result.Status = types.TestStatusRunning
 			dbName := "tbl" + strings.ReplaceAll(uuid.NewV4().String(), "-", "")
 			executor.mysql.Exec("CREATE DATABASE IF NOT EXISTS  " + dbName)
 			executor.tidb.Exec("CREATE DATABASE IF NOT EXISTS  " + dbName)
-			//defer executor.mysql.Exec("DROP DATABASE IF EXISTS  " + dbName)
-			//defer executor.tidb.Exec("DROP DATABASE IF EXISTS  " + dbName)
+			defer executor.mysql.Exec("DROP DATABASE IF EXISTS  " + dbName)
+			defer executor.tidb.Exec("DROP DATABASE IF EXISTS  " + dbName)
 
 			cfg, _ := mysql.ParseDSN(config.GetConf().StandardDB)
 			cfg.DBName = dbName
@@ -81,10 +89,10 @@ func (executor *Executor) run(test *types.Test, result *types.TestResult) {
 			db2, _ := util.OpenDBWithRetry("mysql", cfg.FormatDSN())
 			defer db1.Close()
 			defer db2.Close()
+			scope := &testScope{test: test, result: result, loopResult: loopResult, dbName: dbName, db1: db1, db2: db2, ignoreTables: util.NewSet(), logger: logger}
 
-			log.Info("start to run test", zap.Int("round", round))
-
-			scope := &testScope{test: test, result: result, loopResult: loopResult, dbName: dbName, db1: db1, db2: db2, ignoreTables: util.NewSet()}
+			log.Info("start to run test", zap.String("TestName", test.TestName), zap.Int64("TestId", test.ID), zap.Int("round", round), zap.String("dbName", dbName))
+			logger.Println("dbName", dbName)
 			executor.execDML(scope)
 			executor.execQuery(scope)
 
@@ -92,13 +100,12 @@ func (executor *Executor) run(test *types.Test, result *types.TestResult) {
 			if err := loopResult.Persistent(); err != nil {
 				log.Warn("insert loop result failed", zap.Error(err))
 			}
-			if loopResult.FailedDML != "" || loopResult.FailedQuery != "" {
+			if loopResult.Status != types.TestStatusOK {
 				result.FailedLoopCount++
 			}
 			if err := result.Update(); err != nil {
 				log.Warn("update result failed", zap.Error(err))
 			}
-			log.Info("sql count", zap.Int("count", sqlCount))
 		}()
 
 		round++
@@ -118,14 +125,13 @@ func (executor *Executor) run(test *types.Test, result *types.TestResult) {
 func (executor *Executor) execQuery(scope *testScope) {
 	compare := scope.test.GetComparor()
 	var queryBuf = bytes.Buffer{}
-	var failedQueryBuf = bytes.Buffer{}
 	for _, queryLoader := range scope.test.GetQueryLoaders() {
-		log.Info("load queries", zap.Int64("testId", scope.test.ID), zap.String("name", queryLoader.Name()))
+		scope.logger.Println("load queries", zap.Int64("testId", scope.test.ID), zap.String("name", queryLoader.Name()))
 		for _, query := range queryLoader.LoadQuery(scope.dbName) {
 			if query == "" || len(query) == 0 {
 				continue
 			}
-			parsed, shouldIgnore := shouldSkipStatement(query, scope.ignoreTables)
+			parsed, shouldIgnore := shouldSkipStatement(scope.logger, query, scope.ignoreTables)
 			if shouldIgnore {
 				continue
 			}
@@ -134,32 +140,29 @@ func (executor *Executor) execQuery(scope *testScope) {
 			queryBuf.WriteString(";")
 			log.Info("execute query", zap.Int64("testId", scope.test.ID), zap.String("query", query))
 			same, err1, err2 := compare.CompareQuery(scope.db1, scope.db2, query)
-			if putIgnoreTable(parsed, scope.ignoreTables, err1) {
+			if putIgnoreTable(scope.logger, parsed, scope.ignoreTables, err1) {
 				continue
 			}
-			if putIgnoreTable(parsed, scope.ignoreTables, err2) {
+			if putIgnoreTable(scope.logger, parsed, scope.ignoreTables, err2) {
 				continue
 			}
 			ignore := false
 			if err2 != nil {
 				ignore = filter.FilterError(err2.Error(), query)
 			}
-			log.Info("done", zap.Bool("equals", same), zap.Bool("ignore", ignore), zap.Error(err1), zap.Error(err2))
-			if !same && !ignore {
-				failedQueryBuf.WriteString(query)
-				failedQueryBuf.WriteString(";")
+			log.Info("done", zap.String("diff", same), zap.Bool("ignore", ignore), zap.Error(err1), zap.Error(err2))
+			if same != "" && !ignore {
 				scope.loopResult.Status = types.TestStatusFail
+				scope.logger.Println("compare sql result failed", query)
+				scope.logger.Println(same)
 			}
-			sqlCount++
 		}
 	}
 	scope.loopResult.Query = queryBuf.String()
-	scope.loopResult.FailedQuery = failedQueryBuf.String()
 }
 
 func (executor *Executor) execDML(scope *testScope) {
 	var dataBUf = bytes.Buffer{}
-	var failedDML = bytes.Buffer{}
 	for _, dataLoader := range scope.test.GetDataLoaders() {
 		log.Info("using data loader to load data", zap.Int64("testId", scope.test.ID), zap.String("name", dataLoader.Name()))
 		for _, statement := range dataLoader.LoadData(scope.dbName) {
@@ -167,7 +170,7 @@ func (executor *Executor) execDML(scope *testScope) {
 				continue
 			}
 
-			parsed, shouldIgnore := shouldSkipStatement(statement, scope.ignoreTables)
+			parsed, shouldIgnore := shouldSkipStatement(scope.logger, statement, scope.ignoreTables)
 			if shouldIgnore {
 				continue
 			}
@@ -176,47 +179,59 @@ func (executor *Executor) execDML(scope *testScope) {
 			dataBUf.WriteString(";")
 			log.Info("start execute statement", zap.Int64("testId", scope.test.ID), zap.String("statement", statement))
 			r1, err1 := sqldiff.GetQueryResult(scope.db1, statement)
-			if putIgnoreTable(parsed, scope.ignoreTables, err1) {
+			if putIgnoreTable(scope.logger, parsed, scope.ignoreTables, err1) {
 				continue
 			}
 			r2, err2 := sqldiff.GetQueryResult(scope.db2, statement)
-			if putIgnoreTable(parsed, scope.ignoreTables, err2) {
+			if putIgnoreTable(scope.logger, parsed, scope.ignoreTables, err2) {
 				continue
 			}
-			fmt.Printf("%v\n%v\n%v\n%v\n", r1, r2, err1, err2)
 			if err2 != nil && !filter.FilterError(err2.Error(), statement) {
-				failedDML.WriteString(statement)
+				scope.logger.Println(fmt.Sprintf("%v\n%v\n%v\n%v\n", r1, r2, err1, err2))
 			}
 		}
 	}
 	scope.loopResult.DML = dataBUf.String()
-	scope.loopResult.FailedDML = failedDML.String()
 }
 
-func putIgnoreTable(parsed *parser.Result, ignored *util.Set, err error) bool {
+func putIgnoreTable(logger *golog.Logger, parsed *parser.Result, ignored *util.Set, err error) bool {
 	if err != nil && parsed.IsDDL {
 		for _, parsedTableName := range parsed.TableName {
 			_ = ignored.Put(parsedTableName)
-			log.Warn("add invalid table to ignore set", zap.String("table", parsedTableName))
+			logger.Println("add invalid table to ignore set", zap.String("table", parsedTableName))
 		}
 		return true
 	}
 	return false
 }
 
-func shouldSkipStatement(statement string, ignoreTables *util.Set) (*parser.Result, bool) {
+func shouldSkipStatement(logger *golog.Logger, statement string, ignoreTables *util.Set) (*parser.Result, bool) {
 	parsed, err := parser.Parse(statement)
 	if err != nil {
-		log.Warn("invalid sql statement, ignore", zap.String("statement", statement), zap.Error(err))
+		logger.Println("invalid sql statement, ignore", zap.String("statement", statement), zap.Error(err))
 		return nil, true
 	}
 	shouldIgnore := false
 	for _, parsedTableName := range parsed.TableName {
 		if ignoreTables.Contains(parsedTableName) {
-			log.Warn("ignore failed table with failed ddl", zap.String("statement", statement), zap.String("table", parsedTableName))
+			logger.Println("ignore failed table with failed ddl", zap.String("statement", statement), zap.String("table", parsedTableName))
 			shouldIgnore = true
 			break
 		}
 	}
 	return parsed, shouldIgnore
+}
+
+func initLogger(test *types.Test, round int) (*golog.Logger, *os.File, error) {
+	logDir := fmt.Sprintf("results/logs/%d", test.ID)
+	err := os.MkdirAll(logDir, os.ModePerm)
+	if err != nil {
+		return nil, nil, err
+	}
+	f, err := os.OpenFile(fmt.Sprintf("%s/%d.log", logDir, round), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		return nil, nil, err
+	}
+	logger := golog.New(f, fmt.Sprintf("[%d-%d]", test.ID, round), golog.LstdFlags)
+	return logger, f, nil
 }

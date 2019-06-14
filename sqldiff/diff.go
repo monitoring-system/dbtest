@@ -19,14 +19,14 @@ type StandardComparer struct {
 	Strict bool
 }
 
-func (c *StandardComparer) CompareQuery(db1, db2 *sql.DB, query string) (bool, error, error) {
+func (c *StandardComparer) CompareQuery(db1, db2 *sql.DB, query string) (string, error, error) {
 	expectedResult, err1 := GetQueryResult(db1, query)
 	actualResult, err2 := GetQueryResult(db2, query)
 	if err1 != nil || err2 != nil {
-		return false, err1, err2
+		return "", err1, err2
 	} else {
 		// now compare the results
-		equals := false
+		equals := ""
 		if c.Strict {
 			equals = c.strictCompare(expectedResult, actualResult)
 		} else {
@@ -37,30 +37,27 @@ func (c *StandardComparer) CompareQuery(db1, db2 *sql.DB, query string) (bool, e
 }
 
 //return true if two result is equals with order
-func (c *StandardComparer) strictCompare(expectedResult *SqlResult, actualResult *SqlResult) bool {
+func (c *StandardComparer) strictCompare(expectedResult *SqlResult, actualResult *SqlResult) string {
 	queryData1 := expectedResult.data
 	queryData2 := actualResult.data
 	if len(queryData1) != len(queryData2) {
-		log.Info("expectedResult length not equals", zap.Int("db1", len(queryData1)), zap.Int("db2", len(queryData2)))
-		return false
+		return fmt.Sprintf("expectedResult length not equals mysql=%d, tidb=%d", queryData1, len(queryData2))
 	}
 
 	for rowIndex, row := range queryData1 {
 		if !c.compareRow(expectedResult.columnTypes, rowIndex, row, queryData2[rowIndex]) {
-			printColorDiff(expectedResult.String(), actualResult.String())
-			return false
+			return printColorDiff(expectedResult.String(), actualResult.String())
 		}
 	}
-	return true
+	return ""
 }
 
 // compare two query result without ordered
-func (c *StandardComparer) nonOrderCompare(result *SqlResult, result2 *SqlResult) bool {
+func (c *StandardComparer) nonOrderCompare(result *SqlResult, result2 *SqlResult) string {
 	queryData1 := result.data
 	queryData2 := result2.data
 	if len(queryData1) != len(queryData2) {
-		log.Info("result length not equals", zap.Int("db1", len(queryData1)), zap.Int("db2", len(queryData2)))
-		return false
+		return fmt.Sprintf("result length not equals mysql=%d,tidb=%d", len(queryData1), len(queryData2))
 	}
 	var checkedRowArray = make([]bool, len(queryData1))
 	for rowIndex, row := range queryData1 {
@@ -76,11 +73,10 @@ func (c *StandardComparer) nonOrderCompare(result *SqlResult, result2 *SqlResult
 			}
 		}
 		if !hasOneEquals {
-			printColorDiff(result.String(), result2.String())
-			return false
+			return printColorDiff(result.String(), result2.String())
 		}
 	}
-	return true
+	return ""
 }
 
 // compare two result row
@@ -132,7 +128,7 @@ func jsonEquals(s1, s2 string) bool {
 	return reflect.DeepEqual(o1, o2)
 }
 
-func printColorDiff(expect, actual string) {
+func printColorDiff(expect, actual string) string {
 	green := color.New(color.FgGreen).SprintFunc()
 	red := color.New(color.FgRed).SprintFunc()
 	patch := diffmatchpatch.New()
@@ -149,5 +145,5 @@ func printColorDiff(expect, actual string) {
 			newActualResult.WriteString(green(d.Text))
 		}
 	}
-	fmt.Printf("Expected Result:\n%s\nActual Result:\n%s\n", newExpectedContent.String(), newActualResult.String())
+	return fmt.Sprintf("Expected Result:\n%s\nActual Result:\n%s\n", newExpectedContent.String(), newActualResult.String())
 }

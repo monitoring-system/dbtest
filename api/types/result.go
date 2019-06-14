@@ -10,6 +10,7 @@ const (
 	TestStatusDone    string = "done"
 
 	TestStatusOK   string = "OK"
+	TestStatusSkip string = "skip"
 	TestStatusFail string = "fail"
 )
 
