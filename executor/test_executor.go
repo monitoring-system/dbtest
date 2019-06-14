@@ -64,6 +64,11 @@ func (executor *Executor) run(test *types.Test, result *types.TestResult) {
 	round := 1
 	for {
 		func() {
+			defer func() {
+				if err := recover(); err != nil {
+					log.Info("execute loop failed")
+				}
+			}()
 			logger, file, err := initLogger(test, round)
 			if err != nil {
 				loopResult := &types.LoopResult{TestID: test.ID, Loop: round, Start: time.Now().Unix(), Status: types.TestStatusSkip}
@@ -182,7 +187,7 @@ func (executor *Executor) execDML(scope *testScope) *bytes.Buffer {
 			}
 
 			dataBUf.WriteString(statement)
-			dataBUf.WriteString("\n;")
+			dataBUf.WriteString(";\n")
 			log.Info("start execute statement", zap.Int64("testId", scope.test.ID), zap.String("statement", statement))
 			r1, err1 := sqldiff.GetQueryResult(scope.db1, statement)
 			if putIgnoreTable(scope.logger, parsed, scope.ignoreTables, err1) {
