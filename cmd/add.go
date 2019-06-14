@@ -4,9 +4,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/monitoring-system/dbtest/api/types"
-	"github.com/prometheus/common/log"
 	"github.com/spf13/cobra"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"strings"
 )
@@ -40,16 +40,46 @@ func init() {
 	AddTestCmd.Flags().StringVar(&name, "name", "console", "data loaders, split by comma")
 }
 
-func addTest() {
-	yyContent, err := ioutil.ReadFile(yyFile)
+type randgenConf struct {
+	yyFile string
+	zzFile string
+	loop int
+}
+
+type RandgenConfOpt struct {
+	conf randgenConf
+	LoopInterval int
+	QueryCount int
+	QueryLoader string
+	DataLoader string
+	Name string
+}
+
+func NewRandgenConf(yyFile string, zzFile string, loop int) *RandgenConfOpt {
+	return &RandgenConfOpt{
+		conf: randgenConf{
+			yyFile: yyFile,
+			zzFile: zzFile,
+			loop: loop,
+		},
+		LoopInterval: 30,
+		QueryCount: 1000,
+		QueryLoader: "randgen",
+		DataLoader: "randgen",
+		Name: "console",
+	}
+}
+
+func (c *RandgenConfOpt) Add() {
+	yyContent, err := ioutil.ReadFile(c.conf.yyFile)
 	if err != nil {
 		log.Fatal(err)
 	}
-	zzContent, err := ioutil.ReadFile(zzFile)
+	zzContent, err := ioutil.ReadFile(c.conf.zzFile)
 	if err != nil {
 		log.Fatal(err)
 	}
-	payload := &types.Test{TestName: name, Yy: string(yyContent), Zz: string(zzContent), Loop: loop, LoopInterval: loopInterval, QueryLoader: queryLoader, DataLoader: dataLoader}
+	payload := &types.Test{TestName: c.Name, Yy: string(yyContent), Zz: string(zzContent), Loop: c.conf.loop, LoopInterval: c.LoopInterval, QueryLoader: c.QueryLoader, DataLoader: c.DataLoader}
 	resp, err := http.Post("http://localhost:8080/tests", "application/json",
 		strings.NewReader(getPayload(payload)))
 
@@ -64,6 +94,17 @@ func addTest() {
 	_ = json.Unmarshal([]byte(body), payload)
 	fmt.Println("add test successfully")
 	fmt.Println(getPayload(payload))
+}
+
+func addTest() {
+	opt := NewRandgenConf(yyFile, zzFile, loop)
+	opt.LoopInterval = loopInterval
+	opt.QueryCount = queryCount
+	opt.QueryLoader = queryLoader
+	opt.DataLoader = dataLoader
+	opt.Name = name
+
+	opt.Add()
 }
 
 func getPayload(payload *types.Test) string {
