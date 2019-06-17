@@ -14,27 +14,42 @@ docker build -f Dockerfile -t "randgen-server:latest" .
  docker run  -p 9080:9080 randgen-server 
 ```
 
-# start dbtest server
+# build the dbtest
 ```bash
-go run main.go 
+go build main.go -o ./dbtest
 ```
 
-# call api to submit a new test
-URL: 
+# start dbtest server
 ```bash
-POST 127.0.0.1:8080/tests
+./dbtest start --standard-db=root:@tcp(127.0.0.1:3306)/?charset=utf8&parseTime=True&loc=Local --test-db=root:@tcp(127.0.0.1:4000)/?charset=utf8&parseTime=True&loc=Local
 ```
-payload:
-```json
-{
-  "testName":"rand1",
-  "dataLoader":"name",
-  "queryLoader":"query", 
- "yy":"query:\n    select ;\n\nselect:\n    SELECT coalesce\n    FROM _table\n    WHERE condition ;\n\ncoalesce:\n    COALESCE( _field , 0) | COALESCE( _field_list ) ;\n\ncondition:\n    _field IS NULL | _field = 1111 | _field = 'hello' ;",
- "zz":"$tables = {\n        rows =\u003e [0, 1, 10, 100],\n        partitions =\u003e [ undef , 'KEY (pk) PARTITIONS 2' ]\n};\n\n$fields = {\n        types =\u003e [ 'int', 'char', 'enum', 'set' ],\n        indexes =\u003e [undef, 'key' ],\n        null =\u003e [undef, 'not null'],\n        default =\u003e [undef, 'default null'],\n        sign =\u003e [undef, 'unsigned'],\n        charsets =\u003e ['utf8', 'latin1']\n};\n\n$data = {\n        numbers =\u003e [ 'digit', 'null', undef ],\n        strings =\u003e [ 'letter', 'english' ],\n        blobs =\u003e [ 'data' ],\n\ttemporals =\u003e ['date', 'year', 'null', undef ]\n}\n",
- "loop":1,
- "queries":1000, 
- "loopInterval": 30
-}
+
+# submit a new test
+```bash
+./dbtest add --yy=randgen/examples/example.yy --zz=randgen/examples/example.zz
+```
+
+# add all yy zz file in a directory
+```bash
+./dbtest add --loadpath=randgen/examples/
+```
+# watch the test status
+```bash
+./dbtest watch
+```
+# test log and data
+
+logs and data can be found in results directory
+```
+results/
+└── logs # base dir
+    ├── 1
+    │   ├── 1.log  # test logs
+    │   ├── 1.query  # all exectued queries
+    │   └── 1.sql  # all data that is inserted into db
+    └── 2
+        ├── 1.log
+        ├── 1.query
+        └── 1.sql
 
 ```
