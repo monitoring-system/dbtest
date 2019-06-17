@@ -1,6 +1,7 @@
 package types
 
 import (
+	"github.com/a8m/rql"
 	"github.com/monitoring-system/dbtest/db"
 )
 
@@ -15,14 +16,14 @@ const (
 )
 
 type TestResult struct {
-	ID              int64 `json:"id",gorm:"primary_key"`
-	TestID          int64
-	Name            string
-	Status          string
-	FailedLoopCount int
-	Loop            int
-	Start           int64
-	End             int64
+	ID              int64  `json:"id" gorm:"primary_key" rql:"filter,sort"`
+	TestID          int64  `rql:"filter,sort"`
+	Name            string `rql:"filter,sort"`
+	Status          string `rql:"filter,sort"`
+	FailedLoopCount int    `rql:"filter,sort"`
+	Loop            int    `rql:"filter,sort"`
+	Start           int64  `rql:"filter,sort"`
+	End             int64  `rql:"filter,sort"`
 }
 
 //persistent the result and set the id
@@ -39,7 +40,10 @@ func GetTestResultByTestId(id int64) (*TestResult, error) {
 	return result, db.GetDB().Where("test_id", id).First(result).Error
 }
 
-func ListResult() ([]*TestResult, error) {
+func ListResult(p *rql.Params) ([]*TestResult, error) {
 	var list []*TestResult
-	return list, db.GetDB().Find(&list).Error
+	return list, db.GetDB().Where(p.FilterExp, p.FilterArgs).
+		Offset(p.Offset).
+		Limit(p.Limit).
+		Order(p.Sort).Find(&list).Error
 }

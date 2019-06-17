@@ -30,6 +30,7 @@ func init() {
 	StartCmd.Flags().StringVar(&config.Conf.StandardDB, "standard-db", "root:@tcp(127.0.0.1:3306)/?charset=utf8&parseTime=True&loc=Local", "the compare plugin")
 	StartCmd.Flags().StringVar(&config.Conf.TestDB, "test-db", "root:@tcp(127.0.0.1:4000)/?charset=utf8&parseTime=True&loc=Local", "the compare plugin")
 	StartCmd.Flags().BoolVar(&config.Conf.TraceAllErrors, "trace-all-errors", false, "trace all errors")
+	StartCmd.Flags().StringVar(&config.Conf.RandGenServer, "randgen-addr", "http://localhost:9080/loaddata", "randgen server address")
 	flag.Parse()
 }
 
@@ -49,6 +50,7 @@ func StartServer() {
 	engine.GET("/tests", server.ListTest)
 	engine.GET("/tests/:id", server.GetTest)
 	engine.GET("/results", server.ListTestResult)
+	engine.POST("/results", server.ListTestResult)
 	engine.GET("/results/:id/detail", server.ListLoopResult)
 
 	engine.POST("/addfilter", server.AddFilter)

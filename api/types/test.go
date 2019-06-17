@@ -2,6 +2,7 @@ package types
 
 import (
 	"encoding/json"
+	"github.com/monitoring-system/dbtest/config"
 	"github.com/monitoring-system/dbtest/db"
 	"github.com/monitoring-system/dbtest/interfaces"
 	"github.com/monitoring-system/dbtest/sqldiff"
@@ -12,14 +13,14 @@ import (
 )
 
 type Test struct {
-	ID           int64  `json:"id",gorm:"primary_key"`
-	TestName     string `json:"testName"`
-	DataLoader   string `json:"dataLoader"`
-	QueryLoader  string `json:"queryLoader"`
+	ID           int64  `json:"id",gorm:"primary_key" rql:"filter,sort"`
+	TestName     string `json:"testName" rql:"filter,sort"`
+	DataLoader   string `json:"dataLoader" rql:"filter,sort"`
+	QueryLoader  string `json:"queryLoader" rql:"filter,sort"`
 	Loop         int    `json:"loop"`
-	LoopInterval int    `json:"loopInterval"`
+	LoopInterval int    `json:"loopInterval" rql:"filter,sort"`
 
-	Yy      string `gorm:"type:TEXT;"`
+	Yy      string `gorm:"type:TEXT;" rql:"filter,sort"`
 	Zz      string `gorm:"type:TEXT;"`
 	Queries int    `json:"queries"`
 
@@ -92,7 +93,7 @@ func (test *Test) GetLoopInterval() int {
 
 func getLoadDataResponse(randgen *Test, db string) *LoadDataResponse {
 	payload := &LoadDataRequest{Yy: randgen.Yy, ZZ: randgen.Zz, DB: db, Queries: randgen.Queries}
-	resp, err := http.Post("http://localhost:9080/loaddata", "application/json",
+	resp, err := http.Post(config.Conf.RandGenServer, "application/json",
 		strings.NewReader(getLoadDataRequestString(payload)))
 	if err != nil || resp == nil {
 		return nil

@@ -4,6 +4,7 @@ type Config struct {
 	StandardDB     string
 	TestDB         string
 	TraceAllErrors bool
+	RandGenServer  string
 }
 
 var Conf *Config

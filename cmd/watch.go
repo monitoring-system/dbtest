@@ -22,9 +22,13 @@ var WatchTestCmd = &cobra.Command{
 }
 
 var server = "http://localhost:8080"
+var failOnly = false
+var limit = 100
+var order = "id"
 
 func init() {
-	AddTestCmd.Flags().StringVar(&server, "", "http://localhost:8080", "randgen yy file path")
+	WatchTestCmd.Flags().StringVar(&server, "server", "http://localhost:8080", "db test server address")
+	WatchTestCmd.Flags().BoolVar(&failOnly, "fail-only", false, "only list failed tests")
 }
 
 func watchTest() {
