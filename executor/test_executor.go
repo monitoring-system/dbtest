@@ -80,7 +80,7 @@ func (executor *Executor) run(test *types.Test, result *types.TestResult) {
 			loopResult := &types.LoopResult{TestID: test.ID, Loop: round, Start: time.Now().Unix(), Status: types.TestStatusOK}
 			result.Loop += 1
 			result.Status = types.TestStatusRunning
-			dbName := "tbl" + strings.ReplaceAll(uuid.NewV4().String(), "-", "")
+			dbName := fmt.Sprintf("%d_%d_"+strings.ReplaceAll(uuid.NewV4().String(), "-", ""), test.ID, round)
 			executor.mysql.Exec("CREATE DATABASE IF NOT EXISTS  " + dbName)
 			executor.tidb.Exec("CREATE DATABASE IF NOT EXISTS  " + dbName)
 			defer executor.mysql.Exec("DROP DATABASE IF EXISTS  " + dbName)
