@@ -29,6 +29,7 @@ func init() {
 	config.Conf = &config.Config{}
 	StartCmd.Flags().StringVar(&config.Conf.StandardDB, "standard-db", "root:@tcp(127.0.0.1:3306)/?charset=utf8&parseTime=True&loc=Local", "the compare plugin")
 	StartCmd.Flags().StringVar(&config.Conf.TestDB, "test-db", "root:@tcp(127.0.0.1:4000)/?charset=utf8&parseTime=True&loc=Local", "the compare plugin")
+	StartCmd.Flags().BoolVar(&config.Conf.TraceAllErrors, "trace-all-errors", false, "trace all errors")
 	flag.Parse()
 }
 

@@ -2,54 +2,53 @@
 database test framework
 
 
-# build rangden docker image
-```bash
-cd randgen
-make
-docker build -f Dockerfile -t "randgen-server:latest" .
-```
+# How to Use it
 
-# start docker container
-```bash
- docker run  -p 9080:9080 randgen-server 
-```
+1. build rangden docker image
+    ```bash
+    cd randgen
+    make
+    docker build -f Dockerfile -t "randgen-server:latest" .
+    ```
 
-# build the dbtest
-```bash
-go build main.go -o ./dbtest
-```
+2. start docker container
+    ```bash
+     docker run  -p 9080:9080 randgen-server 
+    ```
 
-# start dbtest server
-```bash
-./dbtest start --standard-db=root:@tcp(127.0.0.1:3306)/?charset=utf8&parseTime=True&loc=Local --test-db=root:@tcp(127.0.0.1:4000)/?charset=utf8&parseTime=True&loc=Local
-```
+3. build the dbtest
+    ```bash
+    go build main.go -o ./dbtest
+    ```
 
-# submit a new test
-```bash
-./dbtest add --yy=randgen/examples/example.yy --zz=randgen/examples/example.zz
-```
+4. start dbtest server
+    ```bash
+    ./dbtest start --standard-db=root:@tcp(127.0.0.1:3306)/?charset=utf8&parseTime=True&loc=Local --test-db=root:@tcp(127.0.0.1:4000)/?charset=utf8&parseTime=True&loc=Local
+    ```
 
-# add all yy zz file in a directory
-```bash
-./dbtest add --loadpath=randgen/examples/
-```
-# watch the test status
-```bash
-./dbtest watch
-```
-# test log and data
-
-logs and data can be found in results directory
-```
-results/
-└── logs # base dir
-    ├── 1
-    │   ├── 1.log  # test logs
-    │   ├── 1.query  # all exectued queries
-    │   └── 1.sql  # all data that is inserted into db
-    └── 2
-        ├── 1.log
-        ├── 1.query
-        └── 1.sql
-
-```
+5. submit randgen yy/zz file
+    ```bash
+    # single yy zz file
+    ./dbtest add --yy=randgen/examples/example.yy --zz=randgen/examples/example.zz
+    # or  add all yy zz file in a directory
+    ./dbtest add --loadpath=randgen/examples/
+    ```
+6.  watch the test status
+    ```bash
+    ./dbtest watch
+    ```
+    
+7. check test log and data, logs and data can be found in results directory
+    ```
+    results/
+    └── logs # base dir
+        ├── 1
+        │   ├── 1.log  # test logs
+        │   ├── 1.query  # all exectued queries
+        │   └── 1.sql  # all data that is inserted into db
+        └── 2
+            ├── 1.log
+            ├── 1.query
+            └── 1.sql
+    
+    ```

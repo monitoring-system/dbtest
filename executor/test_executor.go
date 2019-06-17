@@ -12,11 +12,9 @@ import (
 	"github.com/monitoring-system/dbtest/sqldiff"
 	"github.com/monitoring-system/dbtest/util"
 	"github.com/pingcap/log"
-	"github.com/satori/go.uuid"
 	"go.uber.org/zap"
 	golog "log"
 	"os"
-	"strings"
 	"sync"
 	"time"
 )
@@ -80,7 +78,7 @@ func (executor *Executor) run(test *types.Test, result *types.TestResult) {
 			loopResult := &types.LoopResult{TestID: test.ID, Loop: round, Start: time.Now().Unix(), Status: types.TestStatusOK}
 			result.Loop += 1
 			result.Status = types.TestStatusRunning
-			dbName := fmt.Sprintf("%d_%d_"+strings.ReplaceAll(uuid.NewV4().String(), "-", ""), test.ID, round)
+			dbName := fmt.Sprintf("dbtest_%d_%d", test.ID, round)
 			executor.mysql.Exec("CREATE DATABASE IF NOT EXISTS  " + dbName)
 			executor.tidb.Exec("CREATE DATABASE IF NOT EXISTS  " + dbName)
 			defer executor.mysql.Exec("DROP DATABASE IF EXISTS  " + dbName)
@@ -208,7 +206,9 @@ func putIgnoreTable(logger *golog.Logger, parsed *parser.Result, ignored *util.S
 	if err != nil && parsed.IsDDL {
 		for _, parsedTableName := range parsed.TableName {
 			_ = ignored.Put(parsedTableName)
-			logger.Println("add invalid table to ignore set", zap.String("table", parsedTableName))
+			if config.GetConf().TraceAllErrors {
+				logger.Println("add invalid table to ignore set", zap.String("table", parsedTableName))
+			}
 		}
 		return true
 	}
@@ -218,13 +218,17 @@ func putIgnoreTable(logger *golog.Logger, parsed *parser.Result, ignored *util.S
 func shouldSkipStatement(logger *golog.Logger, statement string, ignoreTables *util.Set) (*parser.Result, bool) {
 	parsed, err := parser.Parse(statement)
 	if err != nil {
-		logger.Println("invalid sql statement, ignore", zap.String("statement", statement), zap.Error(err))
+		if config.GetConf().TraceAllErrors {
+			logger.Println("invalid sql statement, ignore", zap.String("statement", statement), zap.Error(err))
+		}
 		return nil, true
 	}
 	shouldIgnore := false
 	for _, parsedTableName := range parsed.TableName {
 		if ignoreTables.Contains(parsedTableName) {
-			logger.Println("ignore failed table with failed ddl", zap.String("statement", statement), zap.String("table", parsedTableName))
+			if config.GetConf().TraceAllErrors {
+				logger.Println("ignore failed table with failed ddl", zap.String("statement", statement), zap.String("table", parsedTableName))
+			}
 			shouldIgnore = true
 			break
 		}

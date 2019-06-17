@@ -21,6 +21,12 @@ var WatchTestCmd = &cobra.Command{
 	},
 }
 
+var server = "http://localhost:8080"
+
+func init() {
+	AddTestCmd.Flags().StringVar(&server, "", "http://localhost:8080", "randgen yy file path")
+}
+
 func watchTest() {
 	for {
 		// By moving cursor to top-left position we ensure that console output
