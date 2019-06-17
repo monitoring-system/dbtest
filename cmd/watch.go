@@ -67,7 +67,7 @@ func watchTest() {
 }
 
 func getTestResult() []*types.TestResult {
-	resp, err := http.Get("http://localhost:8080/results")
+	resp, err := http.Get(fmt.Sprintf("%s", "/results"))
 	if err != nil || resp == nil {
 		return nil
 	}
