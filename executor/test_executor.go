@@ -69,7 +69,7 @@ func (executor *Executor) run(test *types.Test, result *types.TestResult) {
 					log.Info("execute loop failed")
 				}
 			}()
-			logger, file, err := initLogger(test, round)
+			logger, file, err := getLogger(test, round, "log", golog.LstdFlags)
 			if err != nil {
 				loopResult := &types.LoopResult{TestID: test.ID, Loop: round, Start: time.Now().Unix(), Status: types.TestStatusSkip}
 				loopResult.Persistent()
@@ -108,9 +108,8 @@ func (executor *Executor) run(test *types.Test, result *types.TestResult) {
 			if loopResult.Status != types.TestStatusOK {
 				result.FailedLoopCount++
 				logger.Println("test case failed")
-				logger.Println(data.String())
-				logger.Println("===============")
-				logger.Println(query.String())
+				persistentData(test, round, data.String())
+				persistentQuery(test, round, query.String())
 			} else {
 				logger.Println("test case OK")
 			}
@@ -233,16 +232,28 @@ func shouldSkipStatement(logger *golog.Logger, statement string, ignoreTables *u
 	return parsed, shouldIgnore
 }
 
-func initLogger(test *types.Test, round int) (*golog.Logger, *os.File, error) {
+func getLogger(test *types.Test, round int, suffix string, flag int) (*golog.Logger, *os.File, error) {
 	logDir := fmt.Sprintf("results/logs/%d", test.ID)
 	err := os.MkdirAll(logDir, os.ModePerm)
 	if err != nil {
 		return nil, nil, err
 	}
-	f, err := os.OpenFile(fmt.Sprintf("%s/%d.log", logDir, round), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	f, err := os.OpenFile(fmt.Sprintf("%s/%d.%s", logDir, round, suffix), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		return nil, nil, err
 	}
-	logger := golog.New(f, fmt.Sprintf("[%d-%d]", test.ID, round), golog.LstdFlags)
+	logger := golog.New(f, "", flag)
 	return logger, f, nil
+}
+
+func persistentData(test *types.Test, round int, data string) {
+	dataLogger, dataFile, _ := getLogger(test, round, "sql", 0)
+	defer dataFile.Close()
+	dataLogger.Println(data)
+}
+
+func persistentQuery(test *types.Test, round int, query string) {
+	dataLogger, dataFile, _ := getLogger(test, round, "query", 0)
+	defer dataFile.Close()
+	dataLogger.Println(query)
 }
