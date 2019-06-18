@@ -1,8 +1,6 @@
 package parser
 
 import (
-	"errors"
-	"fmt"
 	"github.com/xwb1989/sqlparser"
 	"reflect"
 )
@@ -34,7 +32,7 @@ func Parse(sql string) (*Result, error) {
 		}
 	}
 
-	return nil, errors.New(fmt.Sprintf("Unsupport statement, type=%T", ast))
+	return buildResult(false, nil), nil
 }
 
 func buildResult(isddl bool, tableNames []string) *Result {
