@@ -166,7 +166,7 @@ func (executor *Executor) execQuery(scope *testScope) *bytes.Buffer {
 		queryBuf.WriteString(query)
 		queryBuf.WriteString(";\n")
 		log.Info("execute query", zap.Int64("testId", scope.test.ID), zap.String("query", query))
-		same, err1, err2 := compare.CompareQuery(scope.db1, scope.db2, query)
+		diff, err1, err2 := compare.CompareQuery(scope.db1, scope.db2, query)
 		if putIgnoreTable(scope.logger, parsed, scope.ignoreTables, err1) {
 			continue
 		}
@@ -177,11 +177,11 @@ func (executor *Executor) execQuery(scope *testScope) *bytes.Buffer {
 		if err2 != nil {
 			ignore = filter.FilterError(err2.Error(), query)
 		}
-		log.Info("done", zap.String("diff", same), zap.Bool("ignore", ignore), zap.Error(err1), zap.Error(err2))
-		if same != "" && !ignore {
+		log.Info("done", zap.String("diff", diff), zap.Bool("ignore", ignore), zap.Error(err1), zap.Error(err2))
+		if diff != "" && !ignore {
 			scope.loopResult.Status = types.TestStatusFail
 			scope.logger.Println("compare sql result failed", query)
-			scope.logger.Println(same)
+			scope.logger.Println(diff)
 		}
 	}
 	return &queryBuf
@@ -233,9 +233,12 @@ func putIgnoreTable(logger *golog.Logger, parsed *parser.Result, ignored *util.S
 }
 
 func shouldSkipStatement(logger *golog.Logger, statement string, ignoreTables *util.Set) (*parser.Result, bool) {
-	parsed, _ := parser.Parse(statement)
+	parsed, err := parser.Parse(statement)
 	if config.GetConf().TraceAllErrors {
 		return parsed, false
+	}
+	if err != nil {
+		return parsed, true
 	}
 
 	if parsed.IgnoreSql {

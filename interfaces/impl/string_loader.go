@@ -22,11 +22,13 @@ func (loader *StringLoader) Name() string {
 }
 
 func (loader *StringLoader) load(dbName string) []string {
-	origin := strings.Split(loader.SQLStr, ";\n")
+	origin := strings.Split(loader.SQLStr, ";")
 	sql := make([]string, len(origin)+1)
 	sql = append(sql, "use "+dbName+";")
 	for _, st := range origin {
-		sql = append(sql, st)
+		if st != "" {
+			sql = append(sql, st)
+		}
 	}
 	return sql
 }

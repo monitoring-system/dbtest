@@ -5,6 +5,7 @@ import (
 	"github.com/monitoring-system/dbtest/interfaces"
 	"github.com/monitoring-system/dbtest/interfaces/impl"
 	"github.com/monitoring-system/dbtest/sqldiff"
+	"sync"
 )
 
 type Test struct {
@@ -25,8 +26,8 @@ type Test struct {
 	QueryStr string
 	DataStr  string
 
-	dataLoader  interfaces.DataLoader
-	queryLoader interfaces.QueryLoader
+	lock    sync.Mutex
+	randgen *impl.RandgenLoader
 }
 
 //persistent the result and set the id
@@ -59,7 +60,7 @@ func (test *Test) GetDataLoaders() interfaces.DataLoader {
 	case "string":
 		return &impl.StringLoader{SQLStr: test.DataStr}
 	default:
-		return &impl.RandgenLoader{Yy: test.Yy, Zz: test.Zz, Queries: test.Queries}
+		return test.getRandGen()
 	}
 }
 
@@ -68,9 +69,9 @@ func (test *Test) GetQueryLoaders() interfaces.QueryLoader {
 	case "file":
 		return &impl.FileDataLoader{FileName: test.QueryFileName}
 	case "string":
-		return &impl.StringLoader{SQLStr: test.QueryLoader}
+		return &impl.StringLoader{SQLStr: test.QueryStr}
 	default:
-		return &impl.RandgenLoader{Yy: test.Yy, Zz: test.Zz, Queries: test.Queries}
+		return test.getRandGen()
 	}
 }
 
@@ -84,4 +85,13 @@ func (test *Test) GetLoop() int {
 
 func (test *Test) GetLoopInterval() int {
 	return test.LoopInterval
+}
+
+func (test *Test) getRandGen() *impl.RandgenLoader {
+	test.lock.Lock()
+	defer test.lock.Unlock()
+	if test.randgen == nil {
+		test.randgen = &impl.RandgenLoader{Yy: test.Yy, Zz: test.Zz, Queries: test.Queries}
+	}
+	return test.randgen
 }
