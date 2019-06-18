@@ -12,6 +12,13 @@ type SqlResult struct {
 	columnTypes []*sql.ColumnType
 }
 
+func (result *SqlResult) HasResult() bool {
+	if result.data == nil || result.header == nil {
+		return false
+	}
+	return true
+}
+
 // readable query result like mysql shell client
 func (result *SqlResult) String() string {
 	if result.data == nil || result.header == nil {

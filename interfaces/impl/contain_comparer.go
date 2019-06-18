@@ -17,10 +17,13 @@ func (c *ContainsComparer) CompareQuery(db1, db2 *sql.DB, query string) (string,
 	if err != nil {
 		return "", nil, err
 	}
-	resultStr := result.String()
-	if strings.Contains(resultStr, c.Content) {
-		return "", nil, nil
-	} else {
-		return sqldiff.GetColorDiff(c.Content, resultStr), nil, nil
+	if result.HasResult() {
+		resultStr := result.String()
+		if strings.Contains(resultStr, c.Content) {
+			return "", nil, nil
+		} else {
+			return sqldiff.GetColorDiff(c.Content, resultStr), nil, nil
+		}
 	}
+	return "", nil, nil
 }
