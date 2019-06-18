@@ -237,6 +237,11 @@ func shouldSkipStatement(logger *golog.Logger, statement string, ignoreTables *u
 	if config.GetConf().TraceAllErrors {
 		return parsed, false
 	}
+
+	if parsed.IgnoreSql {
+		return parsed, true
+	}
+
 	shouldIgnore := false
 	for _, parsedTableName := range parsed.TableName {
 		if ignoreTables.Contains(parsedTableName) {
