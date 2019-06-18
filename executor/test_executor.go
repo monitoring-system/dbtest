@@ -222,12 +222,12 @@ func (executor *Executor) execDML(scope *testScope) *bytes.Buffer {
 }
 
 func putIgnoreTable(logger *golog.Logger, parsed *parser.Result, ignored *util.Set, err error) bool {
+	if config.GetConf().TraceAllErrors {
+		return false
+	}
 	if err != nil && parsed.IsDDL {
 		for _, parsedTableName := range parsed.TableName {
 			_ = ignored.Put(parsedTableName)
-			if config.GetConf().TraceAllErrors {
-				logger.Println("add invalid table to ignore set", zap.String("table", parsedTableName))
-			}
 		}
 		return true
 	}
@@ -235,19 +235,14 @@ func putIgnoreTable(logger *golog.Logger, parsed *parser.Result, ignored *util.S
 }
 
 func shouldSkipStatement(logger *golog.Logger, statement string, ignoreTables *util.Set) (*parser.Result, bool) {
-	parsed, err := parser.Parse(statement)
-	if err != nil {
-		if config.GetConf().TraceAllErrors {
-			logger.Println("invalid sql statement, ignore", zap.String("statement", statement), zap.Error(err))
-		}
-		return nil, true
+	parsed, _ := parser.Parse(statement)
+	if config.GetConf().TraceAllErrors {
+		return parsed, false
 	}
 	shouldIgnore := false
 	for _, parsedTableName := range parsed.TableName {
 		if ignoreTables.Contains(parsedTableName) {
-			if config.GetConf().TraceAllErrors {
-				logger.Println("ignore failed table with failed ddl", zap.String("statement", statement), zap.String("table", parsedTableName))
-			}
+			log.Info("ignore failed table with failed ddl", zap.String("statement", statement), zap.String("table", parsedTableName))
 			shouldIgnore = true
 			break
 		}

@@ -46,7 +46,7 @@ func (c *StandardComparer) strictCompare(expectedResult *SqlResult, actualResult
 
 	for rowIndex, row := range queryData1 {
 		if !c.compareRow(expectedResult.columnTypes, rowIndex, row, queryData2[rowIndex]) {
-			return printColorDiff(expectedResult.String(), actualResult.String())
+			return GetColorDiff(expectedResult.String(), actualResult.String())
 		}
 	}
 	return ""
@@ -73,7 +73,7 @@ func (c *StandardComparer) nonOrderCompare(result *SqlResult, result2 *SqlResult
 			}
 		}
 		if !hasOneEquals {
-			return printColorDiff(result.String(), result2.String())
+			return GetColorDiff(result.String(), result2.String())
 		}
 	}
 	return ""
@@ -128,7 +128,7 @@ func jsonEquals(s1, s2 string) bool {
 	return reflect.DeepEqual(o1, o2)
 }
 
-func printColorDiff(expect, actual string) string {
+func GetColorDiff(expect, actual string) string {
 	green := color.New(color.FgGreen).SprintFunc()
 	red := color.New(color.FgRed).SprintFunc()
 	patch := diffmatchpatch.New()

@@ -3,6 +3,7 @@ package filter
 import (
 	"database/sql"
 	"fmt"
+	"github.com/monitoring-system/dbtest/config"
 	"github.com/prometheus/common/log"
 	"go.uber.org/zap"
 	"io/ioutil"
@@ -43,6 +44,9 @@ func RegisterDiffFilter(f DiffFilter) {
 }
 
 func FilterError(errMsg string, source string) bool {
+	if config.Conf.TraceAllErrors {
+		return false
+	}
 	for _, f := range errMsgFilters {
 		if f(errMsg, source) {
 			return true
@@ -64,10 +68,10 @@ func FilterCompareDiff(vInTiDB interface{}, vInMySQL interface{}, colType *sql.C
 
 var (
 	errMsgFilter ErrMsgFilter
-	diffFilter	DiffFilter
+	diffFilter   DiffFilter
 
 	errMsgType reflect.Type
-	diffType reflect.Type
+	diffType   reflect.Type
 )
 
 func init() {
@@ -79,9 +83,9 @@ func init() {
 	// Load filters from FilterPATH.
 	if files, err := ioutil.ReadDir(FilterPATH); err != nil {
 		log.Error("load filters failed", zap.Error(err))
-	}else {
+	} else {
 		for _, info := range files {
-			if err := AddFilter(fmt.Sprintf("%s/%s",FilterPATH, info.Name())); err != nil {
+			if err := AddFilter(fmt.Sprintf("%s/%s", FilterPATH, info.Name())); err != nil {
 				log.Error("load filter failed", zap.Error(err))
 			}
 		}
@@ -155,7 +159,7 @@ func filterZero(vInTiDB interface{}, vInMySQL interface{}, colType *sql.ColumnTy
 		return true
 	}
 
-	 return false
+	return false
 }
 
 func isZero(v interface{}) bool {
@@ -175,7 +179,7 @@ func intConvert(data []byte) (interface{}, error) {
 }
 
 func boolConvert(data []byte) (interface{}, error) {
-	v , err := strconv.ParseBool(string(data))
+	v, err := strconv.ParseBool(string(data))
 	return v, err
 }
 
@@ -224,17 +228,14 @@ var typeForMysqlToGo = map[string]convertF{
 	//"datetime":           reflect.TypeOf(time.Now()), // time.Time or string
 	//"timestamp":          reflect.TypeOf(time.Now()), // time.Time or string
 	//"time":               reflect.TypeOf(time.Now()), // time.Time or string
-	"float":              floatConvert,
-	"double":             floatConvert,
-	"decimal":            floatConvert,
-	"binary":             stringConvert,
-	"varbinary":          stringConvert,
+	"float":     floatConvert,
+	"double":    floatConvert,
+	"decimal":   floatConvert,
+	"binary":    stringConvert,
+	"varbinary": stringConvert,
 }
 
 func isFloat(colType *sql.ColumnType) bool {
 	t := strings.ToLower(colType.DatabaseTypeName())
 	return t == "float" || t == "double" || t == "decimal"
 }
-
-
-
