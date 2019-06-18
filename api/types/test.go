@@ -1,15 +1,10 @@
 package types
 
 import (
-	"encoding/json"
-	"github.com/monitoring-system/dbtest/config"
 	"github.com/monitoring-system/dbtest/db"
 	"github.com/monitoring-system/dbtest/interfaces"
+	"github.com/monitoring-system/dbtest/interfaces/impl"
 	"github.com/monitoring-system/dbtest/sqldiff"
-	"io/ioutil"
-	"net/http"
-	"strings"
-	"sync"
 )
 
 type Test struct {
@@ -21,12 +16,17 @@ type Test struct {
 	LoopInterval int    `json:"loopInterval" rql:"filter,sort"`
 
 	Yy      string `gorm:"type:TEXT;" rql:"filter,sort"`
-	Zz      string `gorm:"type:TEXT;"`
-	Queries int    `json:"queries"`
+	Zz      string `gorm:"type:TEXT;" rql:"filter,sort"`
+	Queries int    `json:"queries" rql:"filter,sort"`
 
-	locker sync.RWMutex
-	data   []string
-	query  []string
+	QueryFileName string
+	DataFileName  string
+
+	QueryStr string
+	DataStr  string
+
+	dataLoader  interfaces.DataLoader
+	queryLoader interfaces.QueryLoader
 }
 
 //persistent the result and set the id
@@ -48,35 +48,30 @@ func ListTest() ([]*Test, error) {
 	return list, db.GetDB().Find(&list).Error
 }
 
-func (test *Test) LoadData(db string) []string {
-	test.locker.Lock()
-	defer test.locker.Unlock()
-	response := getLoadDataResponse(test, db)
-	test.data = response.SQLs
-	test.query = response.Queries
-	return test.data
-}
-
-func (test *Test) LoadQuery(db string) []string {
-	test.locker.Lock()
-	defer test.locker.Unlock()
-	return test.query
-}
-
-func (test *Test) Name() string {
-	return "randgen"
-}
-
 func (test *Test) GetName() string {
-	return ""
+	return test.TestName
 }
 
-func (test *Test) GetDataLoaders() []interfaces.DataLoader {
-	return []interfaces.DataLoader{test}
+func (test *Test) GetDataLoaders() interfaces.DataLoader {
+	switch test.DataLoader {
+	case "file":
+		return &impl.FileDataLoader{FileName: test.DataFileName}
+	case "string":
+		return &impl.StringLoader{SQLStr: test.DataStr}
+	default:
+		return &impl.RandgenLoader{Yy: test.Yy, Zz: test.Zz, Queries: test.Queries}
+	}
 }
 
-func (test *Test) GetQueryLoaders() []interfaces.QueryLoader {
-	return []interfaces.QueryLoader{test}
+func (test *Test) GetQueryLoaders() interfaces.QueryLoader {
+	switch test.DataLoader {
+	case "file":
+		return &impl.FileDataLoader{FileName: test.QueryFileName}
+	case "string":
+		return &impl.StringLoader{SQLStr: test.QueryLoader}
+	default:
+		return &impl.RandgenLoader{Yy: test.Yy, Zz: test.Zz, Queries: test.Queries}
+	}
 }
 
 func (test *Test) GetComparor() interfaces.SqlResultComparer {
@@ -89,38 +84,4 @@ func (test *Test) GetLoop() int {
 
 func (test *Test) GetLoopInterval() int {
 	return test.LoopInterval
-}
-
-func getLoadDataResponse(randgen *Test, db string) *LoadDataResponse {
-	payload := &LoadDataRequest{Yy: randgen.Yy, ZZ: randgen.Zz, DB: db, Queries: randgen.Queries}
-	resp, err := http.Post(config.Conf.RandGenServer, "application/json",
-		strings.NewReader(getLoadDataRequestString(payload)))
-	if err != nil || resp == nil {
-		return nil
-	}
-	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		// handle error
-	}
-	data := &LoadDataResponse{}
-	json.Unmarshal([]byte(body), data)
-	return data
-}
-
-type LoadDataResponse struct {
-	SQLs    []string `json:"sql"`
-	Queries []string `json:"queries"`
-}
-
-func getLoadDataRequestString(payload *LoadDataRequest) string {
-	bytes, _ := json.Marshal(payload)
-	return string(bytes)
-}
-
-type LoadDataRequest struct {
-	Yy      string `json:"yy"`
-	ZZ      string `json:"zz"`
-	DB      string `json:"db"`
-	Queries int    `json:"queries"`
 }
