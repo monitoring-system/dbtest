@@ -35,9 +35,9 @@ func (result *TestResult) Update() error {
 	return db.GetDB().Save(result).Error
 }
 
-func GetTestResultByTestId(id int64) (*TestResult, error) {
-	result := &TestResult{}
-	return result, db.GetDB().Where("test_id", id).First(result).Error
+func ListUnFinishedTestResult() ([]*TestResult, error) {
+	var list []*TestResult
+	return list, db.GetDB().Where(" status != ?", TestStatusDone).Find(&list).Error
 }
 
 func ListResult(p *rql.Params) ([]*TestResult, error) {

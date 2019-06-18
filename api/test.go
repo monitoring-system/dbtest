@@ -129,6 +129,9 @@ func getDBQuery(r *http.Request, config rql.Config) (*rql.Params, error) {
 	if err != nil {
 		return nil, err
 	}
+	if b == nil || len(b) == 0 {
+		b = []byte("{}")
+	}
 	// MustNewParser panics if the configuration is invalid.
 	QueryParser := rql.MustNewParser(config)
 	return QueryParser.Parse(b)

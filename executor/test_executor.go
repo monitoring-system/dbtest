@@ -27,7 +27,26 @@ type Executor struct {
 }
 
 func New(mysql, tidb *sql.DB) *Executor {
-	return &Executor{mysql: mysql, tidb: tidb, tests: make(map[string]*types.TestResult)}
+	executor := &Executor{mysql: mysql, tidb: tidb, tests: make(map[string]*types.TestResult)}
+	executor.reScheduleUnfinishedTests()
+	return executor
+}
+
+func (executor *Executor) reScheduleUnfinishedTests() {
+	list, err := types.ListUnFinishedTestResult()
+	if err != nil {
+		log.Warn("reschedule failed", zap.Error(err))
+	}
+	if len(list) > 0 {
+		for _, result := range list {
+			test, err := types.GetTestById(result.TestID)
+			if err != nil {
+				log.Warn("unable to get test config, skip", zap.Int64("testId", result.TestID), zap.Int64("resusltId", result.ID), zap.Error(err))
+				continue
+			}
+			go executor.run(test, result)
+		}
+	}
 }
 
 //submit a Test to the executor
