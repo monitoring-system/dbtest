@@ -5,12 +5,12 @@ import (
 )
 
 type LoopResult struct {
-	ID     int64 `json:"id",gorm:"primary_key"`
-	TestID int64
-	Loop   int
-	Status string
-	Start  int64
-	End    int64
+	ID     int64  `json:"id",gorm:"primary_key"`
+	TestID int64  `rql:"filter,sort"`
+	Loop   int    `rql:"filter,sort"`
+	Status string `rql:"filter,sort"`
+	Start  int64  `rql:"filter,sort"`
+	End    int64  `rql:"filter,sort"`
 	//DML    string `gorm:"type:longtext;"`
 	//Query  string `gorm:"type:longtext;"`
 }

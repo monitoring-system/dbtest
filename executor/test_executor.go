@@ -12,11 +12,9 @@ import (
 	"github.com/monitoring-system/dbtest/sqldiff"
 	"github.com/monitoring-system/dbtest/util"
 	"github.com/pingcap/log"
-	"github.com/satori/go.uuid"
 	"go.uber.org/zap"
 	golog "log"
 	"os"
-	"strings"
 	"sync"
 	"time"
 )
@@ -29,7 +27,26 @@ type Executor struct {
 }
 
 func New(mysql, tidb *sql.DB) *Executor {
-	return &Executor{mysql: mysql, tidb: tidb, tests: make(map[string]*types.TestResult)}
+	executor := &Executor{mysql: mysql, tidb: tidb, tests: make(map[string]*types.TestResult)}
+	executor.reScheduleUnfinishedTests()
+	return executor
+}
+
+func (executor *Executor) reScheduleUnfinishedTests() {
+	list, err := types.ListUnFinishedTestResult()
+	if err != nil {
+		log.Warn("reschedule failed", zap.Error(err))
+	}
+	if len(list) > 0 {
+		for _, result := range list {
+			test, err := types.GetTestById(result.TestID)
+			if err != nil {
+				log.Warn("unable to get test config, skip", zap.Int64("testId", result.TestID), zap.Int64("resusltId", result.ID), zap.Error(err))
+				continue
+			}
+			go executor.run(test, result)
+		}
+	}
 }
 
 //submit a Test to the executor
@@ -69,7 +86,7 @@ func (executor *Executor) run(test *types.Test, result *types.TestResult) {
 					log.Info("execute loop failed")
 				}
 			}()
-			logger, file, err := initLogger(test, round)
+			logger, file, err := getLogger(test, round, "log", golog.LstdFlags)
 			if err != nil {
 				loopResult := &types.LoopResult{TestID: test.ID, Loop: round, Start: time.Now().Unix(), Status: types.TestStatusSkip}
 				loopResult.Persistent()
@@ -80,7 +97,7 @@ func (executor *Executor) run(test *types.Test, result *types.TestResult) {
 			loopResult := &types.LoopResult{TestID: test.ID, Loop: round, Start: time.Now().Unix(), Status: types.TestStatusOK}
 			result.Loop += 1
 			result.Status = types.TestStatusRunning
-			dbName := "tbl" + strings.ReplaceAll(uuid.NewV4().String(), "-", "")
+			dbName := fmt.Sprintf("dbtest_%d_%d", test.ID, round)
 			executor.mysql.Exec("CREATE DATABASE IF NOT EXISTS  " + dbName)
 			executor.tidb.Exec("CREATE DATABASE IF NOT EXISTS  " + dbName)
 			defer executor.mysql.Exec("DROP DATABASE IF EXISTS  " + dbName)
@@ -108,9 +125,8 @@ func (executor *Executor) run(test *types.Test, result *types.TestResult) {
 			if loopResult.Status != types.TestStatusOK {
 				result.FailedLoopCount++
 				logger.Println("test case failed")
-				logger.Println(data.String())
-				logger.Println("===============")
-				logger.Println(query.String())
+				persistentData(test, round, data.String())
+				persistentQuery(test, round, query.String())
 			} else {
 				logger.Println("test case OK")
 			}
@@ -206,10 +222,12 @@ func (executor *Executor) execDML(scope *testScope) *bytes.Buffer {
 }
 
 func putIgnoreTable(logger *golog.Logger, parsed *parser.Result, ignored *util.Set, err error) bool {
+	if config.GetConf().TraceAllErrors {
+		return false
+	}
 	if err != nil && parsed.IsDDL {
 		for _, parsedTableName := range parsed.TableName {
 			_ = ignored.Put(parsedTableName)
-			logger.Println("add invalid table to ignore set", zap.String("table", parsedTableName))
 		}
 		return true
 	}
@@ -217,15 +235,19 @@ func putIgnoreTable(logger *golog.Logger, parsed *parser.Result, ignored *util.S
 }
 
 func shouldSkipStatement(logger *golog.Logger, statement string, ignoreTables *util.Set) (*parser.Result, bool) {
-	parsed, err := parser.Parse(statement)
-	if err != nil || parsed.IgnoreSql {
-		logger.Println("invalid sql statement, ignore", zap.String("statement", statement), zap.Error(err))
-		return nil, true
+	parsed, _ := parser.Parse(statement)
+	if config.GetConf().TraceAllErrors {
+		return parsed, false
 	}
+
+	if parsed.IgnoreSql {
+		return parsed, true
+	}
+
 	shouldIgnore := false
 	for _, parsedTableName := range parsed.TableName {
 		if ignoreTables.Contains(parsedTableName) {
-			logger.Println("ignore failed table with failed ddl", zap.String("statement", statement), zap.String("table", parsedTableName))
+			log.Info("ignore failed table with failed ddl", zap.String("statement", statement), zap.String("table", parsedTableName))
 			shouldIgnore = true
 			break
 		}
@@ -233,16 +255,28 @@ func shouldSkipStatement(logger *golog.Logger, statement string, ignoreTables *u
 	return parsed, shouldIgnore
 }
 
-func initLogger(test *types.Test, round int) (*golog.Logger, *os.File, error) {
+func getLogger(test *types.Test, round int, suffix string, flag int) (*golog.Logger, *os.File, error) {
 	logDir := fmt.Sprintf("results/logs/%d", test.ID)
 	err := os.MkdirAll(logDir, os.ModePerm)
 	if err != nil {
 		return nil, nil, err
 	}
-	f, err := os.OpenFile(fmt.Sprintf("%s/%d.log", logDir, round), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	f, err := os.OpenFile(fmt.Sprintf("%s/%d.%s", logDir, round, suffix), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		return nil, nil, err
 	}
-	logger := golog.New(f, fmt.Sprintf("[%d-%d]", test.ID, round), golog.LstdFlags)
+	logger := golog.New(f, "", flag)
 	return logger, f, nil
+}
+
+func persistentData(test *types.Test, round int, data string) {
+	dataLogger, dataFile, _ := getLogger(test, round, "sql", 0)
+	defer dataFile.Close()
+	dataLogger.Println(data)
+}
+
+func persistentQuery(test *types.Test, round int, query string) {
+	dataLogger, dataFile, _ := getLogger(test, round, "query", 0)
+	defer dataFile.Close()
+	dataLogger.Println(query)
 }

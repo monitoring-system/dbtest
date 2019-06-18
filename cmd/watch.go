@@ -8,6 +8,7 @@ import (
 	"github.com/spf13/cobra"
 	"io/ioutil"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -19,6 +20,17 @@ var WatchTestCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		watchTest()
 	},
+}
+
+var server = "http://localhost:8080"
+var failOnly = false
+
+var query = "{}"
+
+func init() {
+	WatchTestCmd.Flags().StringVar(&server, "server", "http://localhost:8080", "db test server address")
+	WatchTestCmd.Flags().BoolVar(&failOnly, "fail-only", false, "only list failed tests")
+	WatchTestCmd.Flags().StringVar(&query, "query", "{}", "API raw rql query")
 }
 
 func watchTest() {
@@ -33,6 +45,9 @@ func watchTest() {
 		fmt.Fprintf(totals, "TestID\tTestName\tLoop\tStatus\tFailed\tDuration\n")
 
 		for _, result := range results {
+			if failOnly && result.FailedLoopCount > 0 {
+				continue
+			}
 			var color string
 			var duration int64 = 0
 			switch result.Status {
@@ -61,7 +76,7 @@ func watchTest() {
 }
 
 func getTestResult() []*types.TestResult {
-	resp, err := http.Get("http://localhost:8080/results")
+	resp, err := http.Post(fmt.Sprintf("%s/results", server), "application/json", strings.NewReader(query))
 	if err != nil || resp == nil {
 		return nil
 	}

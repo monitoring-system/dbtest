@@ -1,8 +1,10 @@
 package config
 
 type Config struct {
-	StandardDB string
-	TestDB     string
+	StandardDB     string
+	TestDB         string
+	TraceAllErrors bool
+	RandGenServer  string
 }
 
 var Conf *Config

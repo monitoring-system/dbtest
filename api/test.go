@@ -1,11 +1,15 @@
 package api
 
 import (
+	"encoding/base64"
 	"fmt"
+	"github.com/a8m/rql"
 	"github.com/gin-gonic/gin"
 	"github.com/monitoring-system/dbtest/api/types"
 	"github.com/monitoring-system/dbtest/executor"
 	"github.com/monitoring-system/dbtest/filter"
+	"io"
+	"io/ioutil"
 	"net/http"
 	"strconv"
 )
@@ -55,7 +59,18 @@ func (server *server) GetTest(c *gin.Context) {
 }
 
 func (server *server) ListTestResult(c *gin.Context) {
-	list, err := types.ListResult()
+	cfg := rql.Config{
+		Model:    types.TestResult{},
+		FieldSep: ".",
+	}
+
+	params, err := getDBQuery(c.Request, cfg)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, NewErrorResponse(err.Error()))
+		return
+	}
+
+	list, err := types.ListResult(params)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, NewErrorResponse(err.Error()))
 	} else {
@@ -97,4 +112,27 @@ func (server *server) AddFilter(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"filepath": "http://127.0.0.1:8000/" + filename})
+}
+
+// getDBQuery extract the query blob from either the body or the query string
+// and execute the parser.
+func getDBQuery(r *http.Request, config rql.Config) (*rql.Params, error) {
+	var (
+		b   []byte
+		err error
+	)
+	if v := r.URL.Query().Get("query"); v != "" {
+		b, err = base64.StdEncoding.DecodeString(v)
+	} else {
+		b, err = ioutil.ReadAll(io.LimitReader(r.Body, 1<<12))
+	}
+	if err != nil {
+		return nil, err
+	}
+	if b == nil || len(b) == 0 {
+		b = []byte("{}")
+	}
+	// MustNewParser panics if the configuration is invalid.
+	QueryParser := rql.MustNewParser(config)
+	return QueryParser.Parse(b)
 }
