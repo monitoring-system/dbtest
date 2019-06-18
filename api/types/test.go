@@ -11,6 +11,7 @@ import (
 type Test struct {
 	ID           int64  `json:"id",gorm:"primary_key" rql:"filter,sort"`
 	TestName     string `json:"testName" rql:"filter,sort"`
+	Comparer     string `json:"comparer"`
 	DataLoader   string `json:"dataLoader" rql:"filter,sort"`
 	QueryLoader  string `json:"queryLoader" rql:"filter,sort"`
 	Loop         int    `json:"loop"`
@@ -25,6 +26,10 @@ type Test struct {
 
 	QueryStr string
 	DataStr  string
+
+	StrictCompare bool
+
+	ContainContent string
 
 	lock    sync.Mutex
 	randgen *impl.RandgenLoader
@@ -65,7 +70,7 @@ func (test *Test) GetDataLoaders() interfaces.DataLoader {
 }
 
 func (test *Test) GetQueryLoaders() interfaces.QueryLoader {
-	switch test.DataLoader {
+	switch test.QueryLoader {
 	case "file":
 		return &impl.FileDataLoader{FileName: test.QueryFileName}
 	case "string":
@@ -76,7 +81,12 @@ func (test *Test) GetQueryLoaders() interfaces.QueryLoader {
 }
 
 func (test *Test) GetComparor() interfaces.SqlResultComparer {
-	return &sqldiff.StandardComparer{}
+	switch test.Comparer {
+	case "contain":
+		return &impl.ContainsComparer{Content: test.ContainContent}
+	default:
+		return &sqldiff.StandardComparer{Strict: test.StrictCompare}
+	}
 }
 
 func (test *Test) GetLoop() int {
