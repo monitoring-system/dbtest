@@ -218,7 +218,7 @@ func putIgnoreTable(logger *golog.Logger, parsed *parser.Result, ignored *util.S
 
 func shouldSkipStatement(logger *golog.Logger, statement string, ignoreTables *util.Set) (*parser.Result, bool) {
 	parsed, err := parser.Parse(statement)
-	if err != nil {
+	if err != nil || parsed.IgnoreSql {
 		logger.Println("invalid sql statement, ignore", zap.String("statement", statement), zap.Error(err))
 		return nil, true
 	}

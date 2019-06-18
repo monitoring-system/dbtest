@@ -8,7 +8,8 @@ import (
 )
 
 type Result struct {
-	IsDDL bool
+	IsDDL     bool
+	IgnoreSql bool
 	TableName []string
 }
 
@@ -20,25 +21,32 @@ func Parse(sql string) (*Result, error) {
 
 	switch ast.(type) {
 	case *sqlparser.DDL:
-		return &Result{
-			IsDDL:true,
-		TableName: []string{ast.(*sqlparser.DDL).Table.Name.String()},
-	}, nil
-	case *sqlparser.Update,*sqlparser.Select:
+		return buildResult(true, []string{ast.(*sqlparser.DDL).Table.Name.String()}), nil
+	case *sqlparser.Update, *sqlparser.Select:
 		var tables []string
-		tables = getTableNames(reflect.Indirect(reflect.ValueOf(ast)), tables, 0, false)
-		return &Result{
-			IsDDL: false,
-			TableName: tables,
-		}, nil
+		return buildResult(false, getTableNames(reflect.Indirect(reflect.ValueOf(ast)), tables, 0, false)), nil
 	case *sqlparser.Insert:
-		return &Result{
-			IsDDL: false,
-			TableName: []string{ast.(*sqlparser.Insert).Table.Name.String()},
-		}, nil
+		in := ast.(*sqlparser.Insert)
+		if in.Ignore == "" {
+			return buildResult(false, []string{ast.(*sqlparser.Insert).Table.Name.String()}), nil
+		} else {
+			return buildResultWithIgnoreField(false, true, []string{ast.(*sqlparser.Insert).Table.Name.String()}), nil
+		}
 	}
 
 	return nil, errors.New(fmt.Sprintf("Unsupport statement, type=%T", ast))
+}
+
+func buildResult(isddl bool, tableNames []string) *Result {
+	return buildResultWithIgnoreField(isddl, false, tableNames)
+}
+
+func buildResultWithIgnoreField(isddl bool, ignoresql bool, tableNames []string) *Result {
+	return &Result{
+		IsDDL:     isddl,
+		IgnoreSql: ignoresql,
+		TableName: tableNames,
+	}
 }
 
 func getTableNames(v reflect.Value, tables []string, level int, isTable bool) []string {
@@ -47,7 +55,7 @@ func getTableNames(v reflect.Value, tables []string, level int, isTable bool) []
 		if v.Type().Name() == "TableIdent" {
 			// if this is a TableIdent struct, extract the table name
 			tableName := v.FieldByName("v").String()
-			if tableName != "" && isTable{
+			if tableName != "" && isTable {
 				tables = append(tables, tableName)
 			}
 		} else {
