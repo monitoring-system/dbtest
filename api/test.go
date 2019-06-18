@@ -27,11 +27,18 @@ func (server *server) NewTest(c *gin.Context) {
 	if err := c.ShouldBind(test); err != nil {
 		c.JSON(http.StatusBadRequest, NewErrorResponse(err.Error()))
 	}
+	setDefaultValue(test)
 	result, err := server.executor.Submit(test)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, NewErrorResponse(err.Error()))
 	} else {
 		c.JSON(http.StatusOK, result)
+	}
+}
+
+func setDefaultValue(test *types.Test) {
+	if test.Loop <= 0 {
+		test.Loop = 1
 	}
 }
 

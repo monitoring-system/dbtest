@@ -28,11 +28,13 @@ func (loader *FileDataLoader) load(dbName string) []string {
 		return nil
 	}
 
-	origin := strings.Split(string(sqlBytes), ";\n")
+	origin := strings.Split(string(sqlBytes), ";")
 	sql := make([]string, len(origin)+1)
 	sql = append(sql, "use "+dbName+";")
 	for _, st := range origin {
-		sql = append(sql, st)
+		if st != "" {
+			sql = append(sql, st)
+		}
 	}
 	return sql
 }

@@ -57,7 +57,7 @@ func (executor *Executor) Submit(test *types.Test) (*types.Test, error) {
 	if err != nil {
 		return nil, err
 	}
-	result := &types.TestResult{TestID: test.ID, Name: test.Name(), Status: types.TestStatusPending, Loop: 0, Start: time.Now().Unix()}
+	result := &types.TestResult{TestID: test.ID, Name: test.GetName(), Status: types.TestStatusPending, Loop: 0, Start: time.Now().Unix()}
 	err = result.Persistent()
 	if err != nil {
 		return nil, err
@@ -152,37 +152,36 @@ func (executor *Executor) run(test *types.Test, result *types.TestResult) {
 func (executor *Executor) execQuery(scope *testScope) *bytes.Buffer {
 	compare := scope.test.GetComparor()
 	var queryBuf = bytes.Buffer{}
-	for _, queryLoader := range scope.test.GetQueryLoaders() {
-		scope.logger.Println("load queries", zap.Int64("testId", scope.test.ID), zap.String("name", queryLoader.Name()))
-		for _, query := range queryLoader.LoadQuery(scope.dbName) {
-			if query == "" || len(query) == 0 {
-				continue
-			}
-			parsed, shouldIgnore := shouldSkipStatement(scope.logger, query, scope.ignoreTables)
-			if shouldIgnore {
-				continue
-			}
+	queryLoader := scope.test.GetQueryLoaders()
+	scope.logger.Println("load queries", zap.Int64("testId", scope.test.ID), zap.String("name", queryLoader.Name()))
+	for _, query := range queryLoader.LoadQuery(scope.dbName) {
+		if query == "" || len(query) == 0 {
+			continue
+		}
+		parsed, shouldIgnore := shouldSkipStatement(scope.logger, query, scope.ignoreTables)
+		if shouldIgnore {
+			continue
+		}
 
-			queryBuf.WriteString(query)
-			queryBuf.WriteString(";\n")
-			log.Info("execute query", zap.Int64("testId", scope.test.ID), zap.String("query", query))
-			same, err1, err2 := compare.CompareQuery(scope.db1, scope.db2, query)
-			if putIgnoreTable(scope.logger, parsed, scope.ignoreTables, err1) {
-				continue
-			}
-			if putIgnoreTable(scope.logger, parsed, scope.ignoreTables, err2) {
-				continue
-			}
-			ignore := false
-			if err2 != nil {
-				ignore = filter.FilterError(err2.Error(), query)
-			}
-			log.Info("done", zap.String("diff", same), zap.Bool("ignore", ignore), zap.Error(err1), zap.Error(err2))
-			if same != "" && !ignore {
-				scope.loopResult.Status = types.TestStatusFail
-				scope.logger.Println("compare sql result failed", query)
-				scope.logger.Println(same)
-			}
+		queryBuf.WriteString(query)
+		queryBuf.WriteString(";\n")
+		log.Info("execute query", zap.Int64("testId", scope.test.ID), zap.String("query", query))
+		diff, err1, err2 := compare.CompareQuery(scope.db1, scope.db2, query)
+		if putIgnoreTable(scope.logger, parsed, scope.ignoreTables, err1) {
+			continue
+		}
+		if putIgnoreTable(scope.logger, parsed, scope.ignoreTables, err2) {
+			continue
+		}
+		ignore := false
+		if err2 != nil {
+			ignore = filter.FilterError(err2.Error(), query)
+		}
+		log.Info("done", zap.String("diff", diff), zap.Bool("ignore", ignore), zap.Error(err1), zap.Error(err2))
+		if diff != "" && !ignore {
+			scope.loopResult.Status = types.TestStatusFail
+			scope.logger.Println("compare sql result failed", query)
+			scope.logger.Println(diff)
 		}
 	}
 	return &queryBuf
@@ -190,32 +189,31 @@ func (executor *Executor) execQuery(scope *testScope) *bytes.Buffer {
 
 func (executor *Executor) execDML(scope *testScope) *bytes.Buffer {
 	var dataBUf = bytes.Buffer{}
-	for _, dataLoader := range scope.test.GetDataLoaders() {
-		log.Info("using data loader to load data", zap.Int64("testId", scope.test.ID), zap.String("name", dataLoader.Name()))
-		for _, statement := range dataLoader.LoadData(scope.dbName) {
-			if statement == "" || len(statement) == 0 {
-				continue
-			}
+	dataLoader := scope.test.GetDataLoaders()
+	log.Info("using data loader to load data", zap.Int64("testId", scope.test.ID), zap.String("name", dataLoader.Name()))
+	for _, statement := range dataLoader.LoadData(scope.dbName) {
+		if statement == "" || len(statement) == 0 {
+			continue
+		}
 
-			parsed, shouldIgnore := shouldSkipStatement(scope.logger, statement, scope.ignoreTables)
-			if shouldIgnore {
-				continue
-			}
+		parsed, shouldIgnore := shouldSkipStatement(scope.logger, statement, scope.ignoreTables)
+		if shouldIgnore {
+			continue
+		}
 
-			dataBUf.WriteString(statement)
-			dataBUf.WriteString(";\n")
-			log.Info("start execute statement", zap.Int64("testId", scope.test.ID), zap.String("statement", statement))
-			r1, err1 := sqldiff.GetQueryResult(scope.db1, statement)
-			if putIgnoreTable(scope.logger, parsed, scope.ignoreTables, err1) {
-				continue
-			}
-			r2, err2 := sqldiff.GetQueryResult(scope.db2, statement)
-			if putIgnoreTable(scope.logger, parsed, scope.ignoreTables, err2) {
-				continue
-			}
-			if err2 != nil && !filter.FilterError(err2.Error(), statement) {
-				scope.logger.Println(fmt.Sprintf("%v\n%v\n%v\n%v\n", r1, r2, err1, err2))
-			}
+		dataBUf.WriteString(statement)
+		dataBUf.WriteString(";\n")
+		log.Info("start execute statement", zap.Int64("testId", scope.test.ID), zap.String("statement", statement))
+		r1, err1 := sqldiff.GetQueryResult(scope.db1, statement)
+		if putIgnoreTable(scope.logger, parsed, scope.ignoreTables, err1) {
+			continue
+		}
+		r2, err2 := sqldiff.GetQueryResult(scope.db2, statement)
+		if putIgnoreTable(scope.logger, parsed, scope.ignoreTables, err2) {
+			continue
+		}
+		if err2 != nil && !filter.FilterError(err2.Error(), statement) {
+			scope.logger.Println(fmt.Sprintf("%v\n%v\n%v\n%v\n", r1, r2, err1, err2))
 		}
 	}
 	return &dataBUf
@@ -235,9 +233,12 @@ func putIgnoreTable(logger *golog.Logger, parsed *parser.Result, ignored *util.S
 }
 
 func shouldSkipStatement(logger *golog.Logger, statement string, ignoreTables *util.Set) (*parser.Result, bool) {
-	parsed, _ := parser.Parse(statement)
+	parsed, err := parser.Parse(statement)
 	if config.GetConf().TraceAllErrors {
 		return parsed, false
+	}
+	if err != nil {
+		return parsed, true
 	}
 
 	if parsed.IgnoreSql {
