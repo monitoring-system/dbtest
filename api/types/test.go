@@ -5,6 +5,7 @@ import (
 	"github.com/monitoring-system/dbtest/interfaces"
 	"github.com/monitoring-system/dbtest/interfaces/impl"
 	"github.com/monitoring-system/dbtest/sqldiff"
+	"strings"
 	"sync"
 )
 
@@ -30,6 +31,7 @@ type Test struct {
 	StrictCompare bool
 
 	ContainContent string
+	AdjustsStr     string
 
 	lock    sync.Mutex
 	randgen *impl.RandgenLoader
@@ -95,6 +97,20 @@ func (test *Test) GetLoop() int {
 
 func (test *Test) GetLoopInterval() int {
 	return test.LoopInterval
+}
+
+func (test *Test) GetAdjusts() []string {
+	if len(test.AdjustsStr) == 0 {
+		return nil
+	}
+	var sql []string
+	origin := strings.Split(test.AdjustsStr, ";")
+	for _, st := range origin {
+		if st != "" {
+			sql = append(sql, st)
+		}
+	}
+	return sql
 }
 
 func (test *Test) getRandGen() *impl.RandgenLoader {

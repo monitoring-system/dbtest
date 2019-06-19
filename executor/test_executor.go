@@ -8,6 +8,7 @@ import (
 	"github.com/monitoring-system/dbtest/api/types"
 	"github.com/monitoring-system/dbtest/config"
 	"github.com/monitoring-system/dbtest/filter"
+	"github.com/monitoring-system/dbtest/interfaces"
 	"github.com/monitoring-system/dbtest/parser"
 	"github.com/monitoring-system/dbtest/sqldiff"
 	"github.com/monitoring-system/dbtest/util"
@@ -153,7 +154,7 @@ func (executor *Executor) execQuery(scope *testScope) *bytes.Buffer {
 	compare := scope.test.GetComparor()
 	var queryBuf = bytes.Buffer{}
 	queryLoader := scope.test.GetQueryLoaders()
-	scope.logger.Println("load queries", zap.Int64("testId", scope.test.ID), zap.String("name", queryLoader.Name()))
+	scope.logger.Println("load queries", fmt.Sprintf("testId=%d", scope.test.ID), fmt.Sprintf("name=%s", queryLoader.Name()))
 	for _, query := range queryLoader.LoadQuery(scope.dbName) {
 		if query == "" || len(query) == 0 {
 			continue
@@ -169,19 +170,8 @@ func (executor *Executor) execQuery(scope *testScope) *bytes.Buffer {
 
 		queryBuf.WriteString(query)
 		queryBuf.WriteString(";\n")
-		log.Info("execute query", zap.Int64("testId", scope.test.ID), zap.String("query", query))
-		diff, err1, err2 := compare.CompareQuery(scope.db1, scope.db2, query)
-		if putIgnoreTable(scope.logger, parsed, scope.ignoreTables, err1) {
-			continue
-		}
-		if putIgnoreTable(scope.logger, parsed, scope.ignoreTables, err2) {
-			continue
-		}
-		ignore := false
-		if err2 != nil {
-			ignore = filter.FilterError(err2.Error(), query)
-		}
-		log.Info("done", zap.String("diff", diff), zap.Bool("ignore", ignore), zap.Error(err1), zap.Error(err2))
+
+		diff, ignore := getAdjustDiff(scope, compare, query, parsed)
 		if diff != "" && !ignore {
 			scope.loopResult.Status = types.TestStatusFail
 			scope.logger.Println("compare sql result failed", query)
@@ -189,6 +179,42 @@ func (executor *Executor) execQuery(scope *testScope) *bytes.Buffer {
 		}
 	}
 	return &queryBuf
+}
+
+func getAdjustDiff(scope *testScope, compare interfaces.SqlResultComparer, query string, parsed *parser.Result) (string, bool) {
+	diff, ignore := getDiff(scope, compare, query, parsed)
+	adjusts := scope.test.GetAdjusts()
+	if len(adjusts) <= 0 {
+		return diff, ignore
+	}
+
+	for _, ad := range adjusts {
+		r1, _ := sqldiff.GetQueryResult(scope.db1, ad)
+		r2, _ := sqldiff.GetQueryResult(scope.db1, ad)
+		log.Info("adjust result", zap.String("r1", r1.String()), zap.String("r1", r2.String()))
+		diff, ignore = getDiff(scope, compare, query, parsed)
+		if diff == "" || ignore {
+			break
+		}
+	}
+	return diff, ignore
+}
+
+func getDiff(scope *testScope, compare interfaces.SqlResultComparer, query string, parsed *parser.Result) (string, bool) {
+	log.Info("execute query", zap.Int64("testId", scope.test.ID), zap.String("query", query))
+	diff, err1, err2 := compare.CompareQuery(scope.db1, scope.db2, query)
+	if putIgnoreTable(scope.logger, parsed, scope.ignoreTables, err1) {
+		return "", true
+	}
+	if putIgnoreTable(scope.logger, parsed, scope.ignoreTables, err2) {
+		return "", true
+	}
+	ignore := false
+	if err2 != nil {
+		ignore = filter.FilterError(err2.Error(), query)
+	}
+	log.Info("done", zap.String("diff", diff), zap.Bool("ignore", ignore), zap.Error(err1), zap.Error(err2))
+	return diff, ignore
 }
 
 func (executor *Executor) execDML(scope *testScope) *bytes.Buffer {
