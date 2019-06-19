@@ -163,6 +163,10 @@ func (executor *Executor) execQuery(scope *testScope) *bytes.Buffer {
 			continue
 		}
 
+		if parsed.Rewrite {
+			query = parsed.NewSql
+		}
+
 		queryBuf.WriteString(query)
 		queryBuf.WriteString(";\n")
 		log.Info("execute query", zap.Int64("testId", scope.test.ID), zap.String("query", query))
@@ -199,6 +203,10 @@ func (executor *Executor) execDML(scope *testScope) *bytes.Buffer {
 		parsed, shouldIgnore := shouldSkipStatement(scope.logger, statement, scope.ignoreTables)
 		if shouldIgnore {
 			continue
+		}
+
+		if parsed.Rewrite {
+			statement = parsed.NewSql
 		}
 
 		dataBUf.WriteString(statement)

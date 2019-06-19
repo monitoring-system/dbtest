@@ -1,14 +1,18 @@
 package parser
 
 import (
+	_ "fmt"
 	"github.com/xwb1989/sqlparser"
 	"reflect"
+	"strings"
 )
 
 type Result struct {
 	IsDDL     bool
 	IgnoreSql bool
 	TableName []string
+	Rewrite   bool
+	NewSql    string
 }
 
 func Parse(sql string) (*Result, error) {
@@ -19,7 +23,15 @@ func Parse(sql string) (*Result, error) {
 
 	switch ast.(type) {
 	case *sqlparser.DDL:
-		return buildResult(true, []string{ast.(*sqlparser.DDL).Table.Name.String()}), nil
+		needRewrite, newSql := rewriteSql(ast.(*sqlparser.DDL))
+
+		return &Result{
+			IsDDL:     true,
+			IgnoreSql: false,
+			TableName: []string{ast.(*sqlparser.DDL).Table.Name.String()},
+			Rewrite:   needRewrite,
+			NewSql:    newSql,
+		}, nil
 	case *sqlparser.Update, *sqlparser.Select:
 		var tables []string
 		return buildResult(false, getTableNames(reflect.Indirect(reflect.ValueOf(ast)), tables, 0, false)), nil
@@ -76,4 +88,41 @@ func getTableNames(v reflect.Value, tables []string, level int, isTable bool) []
 	}
 
 	return tables
+}
+
+func rewriteSql(ddl *sqlparser.DDL) (needRewrite bool, sql string) {
+	for i, cd := range ddl.TableSpec.Columns {
+		if strings.ToLower(cd.Type.Type) == "decimal" || cd.Type.Length == nil {
+			ddl.TableSpec.Columns[i] = &sqlparser.ColumnDefinition{
+				Name: cd.Name,
+				Type: sqlparser.ColumnType{
+					Type:          cd.Type.Type,
+					NotNull:       cd.Type.NotNull,
+					Autoincrement: cd.Type.Autoincrement,
+					Default:       cd.Type.Default,
+					OnUpdate:      cd.Type.OnUpdate,
+					Comment:       cd.Type.Comment,
+					Unsigned:      cd.Type.Unsigned,
+					Zerofill:      cd.Type.Zerofill,
+					Scale:         cd.Type.Scale,
+					Charset:       cd.Type.Charset,
+					Collate:       cd.Type.Collate,
+					EnumValues:    cd.Type.EnumValues,
+					KeyOpt:        cd.Type.KeyOpt,
+					Length: &sqlparser.SQLVal{
+						Type: sqlparser.IntVal,
+						Val:  []byte("10"),
+					},
+				},
+			}
+
+			needRewrite = true
+		}
+	}
+
+	if needRewrite {
+		sql = sqlparser.String(ddl)
+	}
+
+	return
 }
