@@ -6,6 +6,8 @@ import (
 	"strings"
 )
 
+const Contain = "contain"
+
 type ContainsComparer struct {
 	Content string
 }

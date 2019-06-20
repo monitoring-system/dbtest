@@ -26,6 +26,7 @@ func (test *RandgenLoader) LoadData(db string) []string {
 	if response == nil {
 		test.data = nil
 		test.query = nil
+		return nil
 	}
 	test.data = response.SQLs
 	test.query = response.Queries
