@@ -84,8 +84,7 @@ func (executor *Executor) run(test *types.Test, result *types.TestResult) {
 		func() {
 			defer func() {
 				if err := recover(); err != nil {
-					log.Info("execute loop failed")
-					fmt.Println(err)
+					log.Info("execute loop failed", zap.String("err", fmt.Sprintf("%v", err)))
 				}
 			}()
 			logger, file, err := getLogger(test, round, "log", golog.LstdFlags)
