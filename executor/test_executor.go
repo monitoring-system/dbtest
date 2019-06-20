@@ -167,6 +167,12 @@ func (executor *Executor) execQuery(scope *testScope) *bytes.Buffer {
 	var queryBuf = bytes.Buffer{}
 	queryLoader := scope.test.GetQueryLoaders()
 	scope.logger.Println("load queries", fmt.Sprintf("testId=%d", scope.test.ID), fmt.Sprintf("name=%s", queryLoader.Name()))
+	queries := queryLoader.LoadQuery(scope.dbName)
+	if len(queries) == 0 {
+		scope.logger.Println("no query is generated")
+		log.Warn("no query is found")
+		return &queryBuf
+	}
 	for _, query := range queryLoader.LoadQuery(scope.dbName) {
 		if query == "" || len(query) == 0 {
 			continue
