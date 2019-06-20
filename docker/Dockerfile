@@ -2,7 +2,7 @@ FROM ddfddf/randgenx
 
 RUN mkdir -p /root/result
 
-COPY ./dbtest /root
+COPY ../dbtest /root
 
 ENV CONFPATH=/root/conf
 ENV RMPATH=/root/randgenx
