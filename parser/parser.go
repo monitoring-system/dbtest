@@ -92,7 +92,7 @@ func getTableNames(v reflect.Value, tables []string, level int, isTable bool) []
 
 func rewriteSql(ddl *sqlparser.DDL) (needRewrite bool, sql string) {
 	for i, cd := range ddl.TableSpec.Columns {
-		if strings.ToLower(cd.Type.Type) == "decimal" || cd.Type.Length == nil {
+		if strings.ToLower(cd.Type.Type) == "decimal" && cd.Type.Length == nil {
 			ddl.TableSpec.Columns[i] = &sqlparser.ColumnDefinition{
 				Name: cd.Name,
 				Type: sqlparser.ColumnType{
