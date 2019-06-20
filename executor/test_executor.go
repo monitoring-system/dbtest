@@ -84,7 +84,7 @@ func (executor *Executor) run(test *types.Test, result *types.TestResult) {
 		func() {
 			defer func() {
 				if err := recover(); err != nil {
-					log.Info("execute loop failed")
+					log.Info("execute loop failed", zap.String("err", fmt.Sprintf("%v", err)))
 				}
 			}()
 			logger, file, err := getLogger(test, round, "log", golog.LstdFlags)
@@ -99,8 +99,20 @@ func (executor *Executor) run(test *types.Test, result *types.TestResult) {
 			result.Loop += 1
 			result.Status = types.TestStatusRunning
 			dbName := fmt.Sprintf("dbtest_%d_%d", test.ID, round)
-			executor.mysql.Exec("CREATE DATABASE IF NOT EXISTS  " + dbName)
-			executor.tidb.Exec("CREATE DATABASE IF NOT EXISTS  " + dbName)
+			_, err = executor.mysql.Exec("CREATE DATABASE IF NOT EXISTS  " + dbName)
+			if err != nil {
+				log.Info("fail to create database in mysql", zap.Error(err))
+				loopResult := &types.LoopResult{TestID: test.ID, Loop: round, Start: time.Now().Unix(), Status: types.TestStatusSkip}
+				loopResult.Persistent()
+				return
+			}
+			_, err = executor.tidb.Exec("CREATE DATABASE IF NOT EXISTS  " + dbName)
+			if err != nil {
+				log.Info("fail to create database in mysql", zap.Error(err))
+				loopResult := &types.LoopResult{TestID: test.ID, Loop: round, Start: time.Now().Unix(), Status: types.TestStatusSkip}
+				loopResult.Persistent()
+				return
+			}
 			defer executor.mysql.Exec("DROP DATABASE IF EXISTS  " + dbName)
 			defer executor.tidb.Exec("DROP DATABASE IF EXISTS  " + dbName)
 
