@@ -23,12 +23,7 @@ func Parse(sql string) (*Result, error) {
 
 	switch ast.(type) {
 	case *sqlparser.DDL:
-		var needRewrite bool
-		var newSql string
-		if ast.(*sqlparser.DDL).Action == sqlparser.CreateStr {
-			needRewrite, newSql = rewriteSql(ast.(*sqlparser.DDL))
-		}
-
+		needRewrite, newSql := rewriteSql(ast.(*sqlparser.DDL))
 		return &Result{
 			IsDDL:     true,
 			IgnoreSql: false,
@@ -95,6 +90,10 @@ func getTableNames(v reflect.Value, tables []string, level int, isTable bool) []
 }
 
 func rewriteSql(ddl *sqlparser.DDL) (needRewrite bool, sql string) {
+	if ddl.TableSpec == nil || ddl.TableSpec.Columns == nil {
+		return false, ""
+	}
+
 	for i, cd := range ddl.TableSpec.Columns {
 		if strings.ToLower(cd.Type.Type) == "decimal" && cd.Type.Length == nil {
 			ddl.TableSpec.Columns[i] = &sqlparser.ColumnDefinition{
