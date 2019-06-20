@@ -108,7 +108,7 @@ func (executor *Executor) run(test *types.Test, result *types.TestResult) {
 			}
 			_, err = executor.tidb.Exec("CREATE DATABASE IF NOT EXISTS  " + dbName)
 			if err != nil {
-				log.Info("fail to create database in mysql", zap.Error(err))
+				log.Info("fail to create database in tidb", zap.Error(err))
 				loopResult := &types.LoopResult{TestID: test.ID, Loop: round, Start: time.Now().Unix(), Status: types.TestStatusSkip}
 				loopResult.Persistent()
 				return
