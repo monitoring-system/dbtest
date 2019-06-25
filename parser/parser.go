@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"fmt"
 	_ "fmt"
 	"github.com/xwb1989/sqlparser"
 	"reflect"
@@ -27,7 +28,7 @@ func Parse(sql string) (*Result, error) {
 		return &Result{
 			IsDDL:     true,
 			IgnoreSql: false,
-			TableName: []string{ast.(*sqlparser.DDL).Table.Name.String()},
+			TableName: []string{getTbleNameByDDL(ast.(*sqlparser.DDL))},
 			Rewrite:   needRewrite,
 			NewSql:    newSql,
 		}, nil
@@ -44,6 +45,19 @@ func Parse(sql string) (*Result, error) {
 	}
 
 	return buildResult(false, nil), nil
+}
+
+func getTbleNameByDDL(ddl *sqlparser.DDL) string {
+	if ddl.NewName.IsEmpty() && ddl.Table.IsEmpty() {
+		fmt.Println("parser table failed")
+		return ""
+	}
+
+	if ddl.NewName.IsEmpty() {
+		return ddl.Table.Name.String()
+	}
+
+	return ddl.NewName.Name.String()
 }
 
 func buildResult(isddl bool, tableNames []string) *Result {
