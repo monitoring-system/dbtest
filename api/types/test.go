@@ -33,8 +33,9 @@ type Test struct {
 	ContainContent string
 	AdjustsStr     string
 
-	lock    sync.Mutex
-	randgen *impl.RandgenLoader
+	lock         sync.Mutex
+	randgen      *impl.RandgenLoader
+	localRandgen *impl.LocalRandgenLoader
 }
 
 //persistent the result and set the id
@@ -62,10 +63,12 @@ func (test *Test) GetName() string {
 
 func (test *Test) GetDataLoaders() interfaces.DataLoader {
 	switch test.DataLoader {
-	case "file":
+	case impl.File:
 		return &impl.FileDataLoader{FileName: test.DataFileName}
-	case "string":
+	case impl.String:
 		return &impl.StringLoader{SQLStr: test.DataStr}
+	case impl.LocalRandgen:
+		return test.getLocalRandGen()
 	default:
 		return test.getRandGen()
 	}
@@ -73,10 +76,12 @@ func (test *Test) GetDataLoaders() interfaces.DataLoader {
 
 func (test *Test) GetQueryLoaders() interfaces.QueryLoader {
 	switch test.QueryLoader {
-	case "file":
+	case impl.File:
 		return &impl.FileDataLoader{FileName: test.QueryFileName}
-	case "string":
+	case impl.String:
 		return &impl.StringLoader{SQLStr: test.QueryStr}
+	case impl.LocalRandgen:
+		return test.getLocalRandGen()
 	default:
 		return test.getRandGen()
 	}
@@ -84,7 +89,7 @@ func (test *Test) GetQueryLoaders() interfaces.QueryLoader {
 
 func (test *Test) GetComparor() interfaces.SqlResultComparer {
 	switch test.Comparer {
-	case "contain":
+	case impl.Contain:
 		return &impl.ContainsComparer{Content: test.ContainContent}
 	default:
 		return &sqldiff.StandardComparer{Strict: test.StrictCompare}
@@ -120,4 +125,13 @@ func (test *Test) getRandGen() *impl.RandgenLoader {
 		test.randgen = &impl.RandgenLoader{Yy: test.Yy, Zz: test.Zz, Queries: test.Queries}
 	}
 	return test.randgen
+}
+
+func (test *Test) getLocalRandGen() *impl.LocalRandgenLoader {
+	test.lock.Lock()
+	defer test.lock.Unlock()
+	if test.localRandgen == nil {
+		test.localRandgen = &impl.LocalRandgenLoader{Yy: test.Yy, Zz: test.Zz, Queries: test.Queries}
+	}
+	return test.localRandgen
 }

@@ -4,6 +4,8 @@ import (
 	"strings"
 )
 
+const String = "string"
+
 // file loader will loader data and queries from a file
 type StringLoader struct {
 	SQLStr string
@@ -18,7 +20,7 @@ func (loader *StringLoader) LoadQuery(dbName string) []string {
 }
 
 func (loader *StringLoader) Name() string {
-	return "string"
+	return String
 }
 
 func (loader *StringLoader) load(dbName string) []string {

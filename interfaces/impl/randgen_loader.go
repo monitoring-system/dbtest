@@ -23,6 +23,11 @@ func (test *RandgenLoader) LoadData(db string) []string {
 	test.locker.Lock()
 	defer test.locker.Unlock()
 	response := getLoadDataResponse(test, db)
+	if response == nil {
+		test.data = nil
+		test.query = nil
+		return nil
+	}
 	test.data = response.SQLs
 	test.query = response.Queries
 	return test.data

@@ -108,7 +108,7 @@ func (executor *Executor) run(test *types.Test, result *types.TestResult) {
 			}
 			_, err = executor.tidb.Exec("CREATE DATABASE IF NOT EXISTS  " + dbName)
 			if err != nil {
-				log.Info("fail to create database in mysql", zap.Error(err))
+				log.Info("fail to create database in tidb", zap.Error(err))
 				loopResult := &types.LoopResult{TestID: test.ID, Loop: round, Start: time.Now().Unix(), Status: types.TestStatusSkip}
 				loopResult.Persistent()
 				return
@@ -167,6 +167,12 @@ func (executor *Executor) execQuery(scope *testScope) *bytes.Buffer {
 	var queryBuf = bytes.Buffer{}
 	queryLoader := scope.test.GetQueryLoaders()
 	scope.logger.Println("load queries", fmt.Sprintf("testId=%d", scope.test.ID), fmt.Sprintf("name=%s", queryLoader.Name()))
+	queries := queryLoader.LoadQuery(scope.dbName)
+	if len(queries) == 0 {
+		scope.logger.Println("no query is generated")
+		log.Warn("no query is found")
+		return &queryBuf
+	}
 	for _, query := range queryLoader.LoadQuery(scope.dbName) {
 		if query == "" || len(query) == 0 {
 			continue

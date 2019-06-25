@@ -5,6 +5,8 @@ import (
 	"strings"
 )
 
+const File = "file"
+
 // file loader will loader data and queries from a file
 type FileDataLoader struct {
 	FileName string
@@ -19,7 +21,7 @@ func (loader *FileDataLoader) LoadQuery(dbName string) []string {
 }
 
 func (loader *FileDataLoader) Name() string {
-	return "file"
+	return File
 }
 
 func (loader *FileDataLoader) load(dbName string) []string {

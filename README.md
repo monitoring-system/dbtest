@@ -52,3 +52,19 @@ database test framework
             └── 1.sql
     
     ```
+    
+# Run with docker 
+
+1. build binary
+    ```bash
+    make 
+    ```
+2. build docker image
+    ```bash
+    cd docker
+   docker build -f Dockerfile -t "dbtest:latest" .
+   ```
+3. start docker    
+    ```bash
+     docker run -p 8080:8080 dbtest /root/dbtest start --standard-db="root:@tcp(172.16.4.65:31175)/?charset=utf8&parseTime=True&loc=Local" --test-db="root:@tcp(172.16.4.65:30453)/?charset=utf8&parseTime=True&loc=Local"
+    ```
