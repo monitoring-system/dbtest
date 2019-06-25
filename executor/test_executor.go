@@ -173,22 +173,26 @@ func (executor *Executor) execQuery(scope *testScope) *bytes.Buffer {
 		log.Warn("no query is found")
 		return &queryBuf
 	}
+	execCount := 0
 	for _, query := range queryLoader.LoadQuery(scope.dbName) {
 		if query == "" || len(query) == 0 {
 			continue
 		}
 		parsed, shouldIgnore := shouldSkipStatement(scope.logger, query, scope.ignoreTables)
 		if shouldIgnore {
+			log.Info("ignore sql", zap.String("statement", query))
 			continue
 		}
 
 		if parsed.Rewrite {
+			log.Info("sql rewrite", zap.String("statement", query))
 			query = parsed.NewSql
 		}
 
 		queryBuf.WriteString(query)
 		queryBuf.WriteString(";\n")
 
+		execCount++
 		diff, ignore := getAdjustDiff(scope, compare, query, parsed)
 		if diff != "" && !ignore {
 			scope.loopResult.Status = types.TestStatusFail
@@ -196,6 +200,7 @@ func (executor *Executor) execQuery(scope *testScope) *bytes.Buffer {
 			scope.logger.Println(diff)
 		}
 	}
+	scope.logger.Println("executed query count", execCount)
 	return &queryBuf
 }
 
@@ -239,6 +244,7 @@ func (executor *Executor) execDML(scope *testScope) *bytes.Buffer {
 	var dataBUf = bytes.Buffer{}
 	dataLoader := scope.test.GetDataLoaders()
 	log.Info("using data loader to load data", zap.Int64("testId", scope.test.ID), zap.String("name", dataLoader.Name()))
+	execCount := 0
 	for _, statement := range dataLoader.LoadData(scope.dbName) {
 		if statement == "" || len(statement) == 0 {
 			continue
@@ -246,10 +252,12 @@ func (executor *Executor) execDML(scope *testScope) *bytes.Buffer {
 
 		parsed, shouldIgnore := shouldSkipStatement(scope.logger, statement, scope.ignoreTables)
 		if shouldIgnore {
+			log.Info("ignore sql", zap.String("statement", statement))
 			continue
 		}
 
 		if parsed.Rewrite {
+			log.Info("sql rewrite", zap.String("statement", statement))
 			statement = parsed.NewSql
 		}
 
@@ -267,7 +275,9 @@ func (executor *Executor) execDML(scope *testScope) *bytes.Buffer {
 		if err2 != nil && !filter.FilterError(err2.Error(), statement) {
 			scope.logger.Println(fmt.Sprintf("%v\n%v\n%v\n%v\n", r1, r2, err1, err2))
 		}
+		execCount++
 	}
+	scope.logger.Println("executed data count", execCount)
 	return &dataBUf
 }
 

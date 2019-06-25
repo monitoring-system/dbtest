@@ -11,7 +11,7 @@ all:
 	elif [ $(ARCH) = $(MAC) ]; \
 	then \
 		echo "make in $(MAC) platform"; \
-		GOOS=linux GOARCH=arm64 go build -o ./docker/dbtest  ./main.go; \
+		GOOS=mac  go build -o ./docker/dbtest  ./main.go; \
 	else \
 		echo "ARCH unknown"; \
 	fi

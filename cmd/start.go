@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"flag"
+	"github.com/gin-contrib/pprof"
 	"github.com/gin-gonic/gin"
 	"github.com/go-sql-driver/mysql"
 	"github.com/monitoring-system/dbtest/api"
@@ -54,7 +55,7 @@ func StartServer() {
 	engine.GET("/results/:id/detail", server.ListLoopResult)
 
 	engine.POST("/addfilter", server.AddFilter)
-
+	pprof.Register(engine)
 	log.Fatal("StartServer server failed", zap.String("err", engine.Run("0.0.0.0:8080").Error()))
 
 }
