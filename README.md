@@ -7,7 +7,7 @@ database test framework
 1. build rangden docker image
     ```bash
     cd randgen-server
-    GOOS=linux GOARCH=arm64 go build -o ./randgen-server  ./main.go
+    GOOS=linux go build -o ./randgen-server  ./main.go
     docker build -f Dockerfile -t "randgen-server:latest" .
     ```
 
