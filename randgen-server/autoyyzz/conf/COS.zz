@@ -3,9 +3,9 @@ $tables = {
 };
 
 $fields = {
-         types => ['bigint', 'float', 'double', 'decimal(40, 20)', 'decimal(10, 4)', 'decimal(6, 3)', 'char(20)', 'varchar(20)', 'date', 'time', 'year', 'datetime', 'timestamp'],
+         types => ['bigint', 'float', 'double', 'char(20)', 'varchar(20)', 'date', 'time', 'datetime', 'timestamp'],
          #indexes => ['undef', 'key'],
-         sign => ['signed', 'unsigned'],
+         #sign => ['signed', 'unsigned'],
          #charsets => ['utf8']
 };
 
@@ -15,8 +15,7 @@ $data = {
          '-111.1212', '12.98731', '1.098781',
          '0.112345', '-0.987103', '-0.000000001',
          '0.00000001', '0.999999999', '-0.999999999',
-         'decimal',
          ],
          strings => ['null', 'letter', 'english', 'string(15)'],
-         temporals => [ 'date', 'year', 'null', undef, '2019-08-23', '2018-09-10 10:29:30']
+         temporals => ['null', undef, '2018-09-10 10:29:30']
 };

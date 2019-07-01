@@ -23,9 +23,8 @@ filter:
 |   _field = 18446744073709551615
 |   _field = 12.991
 |   _field < 1.009
-|   _field = '2019-08-23'
 |   _field = '2018-09-10 10:29:30'
-|   _field < '2019-08-23'
+|   _field < '2019-09-23'
 |   PERIOD_DIFF( _field , _field ) > 1
 |   PERIOD_DIFF( _field , _field ) < PERIOD_DIFF( _field , _field )
 |   PERIOD_DIFF( _field , _field ) = PERIOD_DIFF( _field , _field ) ;
