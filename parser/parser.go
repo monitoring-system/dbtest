@@ -40,7 +40,14 @@ func Parse(sql string) (*Result, error) {
 		if in.Ignore == "" {
 			return buildResult(false, []string{ast.(*sqlparser.Insert).Table.Name.String()}), nil
 		} else {
-			return buildResultWithIgnoreField(false, true, []string{ast.(*sqlparser.Insert).Table.Name.String()}), nil
+			in.Ignore = ""
+			return &Result{
+				IsDDL:     false,
+				IgnoreSql: false,
+				TableName: []string{ast.(*sqlparser.Insert).Table.Name.String()},
+				Rewrite: true,
+				NewSql: sqlparser.String(in),
+			}, nil
 		}
 	}
 
