@@ -101,11 +101,12 @@ func loadDefaultErrMsgFilters() {
 }
 
 func loadDefaultDiffFilters() {
-	RegisterDiffFilter(filterNumberPercision)
+	RegisterDiffFilter(filterNumberPrecision)
 	RegisterDiffFilter(filterZero)
 }
 
-func filterNumberPercision(vInTiDB interface{}, vInMySQL interface{}, colType *sql.ColumnType) bool {
+// 过滤浮点数精度不同的问题
+func filterNumberPrecision(vInTiDB interface{}, vInMySQL interface{}, colType *sql.ColumnType) bool {
 	if !isFloat(colType) {
 		return false
 	}
@@ -132,6 +133,7 @@ func floatRound(f float64, n int) float64 {
 	return res
 }
 
+// only for test
 func filterZero(vInTiDB interface{}, vInMySQL interface{}, colType *sql.ColumnType) bool {
 	f, ok := typeForMysqlToGo[strings.ToLower(colType.DatabaseTypeName())]
 	if !ok {

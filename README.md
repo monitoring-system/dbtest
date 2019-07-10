@@ -90,3 +90,5 @@ or
 ```go
 func(vInTiDB interface{}, vInMySQL interface{}, colType *sql.ColumnType) bool
 ```
+
+[一个示例](filter/filter.go) 中的filterNumberPrecision方法
