@@ -76,3 +76,17 @@ database test framework
 
 # Add filter
 
+build your go plugin by `go build -buildmode=plugin`, then put the so file in 
+`plugin-filters` director.
+
+Your plugin must inclue a method called `Filter`, then must have signature as 
+
+```go
+func(errMsg string, source string) bool
+```
+
+or 
+
+```go
+func(vInTiDB interface{}, vInMySQL interface{}, colType *sql.ColumnType) bool
+```
