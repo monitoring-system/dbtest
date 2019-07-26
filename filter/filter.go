@@ -6,8 +6,6 @@ import (
 	"github.com/monitoring-system/dbtest/config"
 	"github.com/prometheus/common/log"
 	"go.uber.org/zap"
-	"io/ioutil"
-	"os"
 	"reflect"
 	"strconv"
 	"strings"
@@ -43,6 +41,7 @@ func RegisterDiffFilter(f DiffFilter) {
 	diffFilters = append(diffFilters, f)
 }
 
+// if need to log the error in file
 func FilterError(errMsg string, source string) bool {
 	if config.Conf.TraceAllErrors {
 		return false
@@ -73,28 +72,6 @@ var (
 	errMsgType reflect.Type
 	diffType   reflect.Type
 )
-
-func init() {
-	os.Mkdir(FilterPATH, os.ModePerm)
-
-	errMsgType = reflect.TypeOf(errMsgFilter)
-	diffType = reflect.TypeOf(diffFilter)
-
-	// Load filters from FilterPATH.
-	if files, err := ioutil.ReadDir(FilterPATH); err != nil {
-		log.Error("load filters failed", zap.Error(err))
-	} else {
-		for _, info := range files {
-			if err := AddFilter(fmt.Sprintf("%s/%s", FilterPATH, info.Name())); err != nil {
-				log.Error("load filter failed", zap.Error(err))
-			}
-		}
-	}
-
-	// Load default filters
-	loadDefaultErrMsgFilters()
-	loadDefaultDiffFilters()
-}
 
 func loadDefaultErrMsgFilters() {
 

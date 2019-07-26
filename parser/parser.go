@@ -24,6 +24,7 @@ func Parse(sql string) (*Result, error) {
 
 	switch ast.(type) {
 	case *sqlparser.DDL:
+		// rewrite ddl
 		needRewrite, newSql := rewriteSql(ast.(*sqlparser.DDL))
 		return &Result{
 			IsDDL:     true,

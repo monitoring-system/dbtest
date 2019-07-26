@@ -3,40 +3,21 @@ package impl
 import (
 	"encoding/json"
 	"github.com/monitoring-system/dbtest/config"
+	"github.com/pingcap/log"
+	"go.uber.org/zap"
 	"io/ioutil"
 	"net/http"
 	"strings"
-	"sync"
 )
 
 type RandgenLoader struct {
 	Yy      string
 	Zz      string
 	Queries int
-
-	locker sync.RWMutex
-	data   []string
-	query  []string
 }
 
-func (test *RandgenLoader) LoadData(db string) []string {
-	test.locker.Lock()
-	defer test.locker.Unlock()
-	response := getLoadDataResponse(test, db)
-	if response == nil {
-		test.data = nil
-		test.query = nil
-		return nil
-	}
-	test.data = response.SQLs
-	test.query = response.Queries
-	return test.data
-}
-
-func (test *RandgenLoader) LoadQuery(db string) []string {
-	test.locker.Lock()
-	defer test.locker.Unlock()
-	return test.query
+func (this *RandgenLoader) LoadSql(dbname string) []string {
+	return getLoadDataResponse(this, dbname).SQLs
 }
 
 func (test *RandgenLoader) Name() string {
@@ -54,15 +35,15 @@ func getLoadDataResponse(randgen *RandgenLoader, db string) *LoadDataResponse {
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		// handle error
+		log.Warn("read randgen server resp error", zap.Error(err))
 	}
 	data := &LoadDataResponse{}
-	json.Unmarshal([]byte(body), data)
+	json.Unmarshal(body, data)
 	return data
 }
 
 type LoadDataResponse struct {
 	SQLs    []string `json:"sql"`
-	Queries []string `json:"queries"`
 }
 
 func getLoadDataRequestString(payload *LoadDataRequest) string {

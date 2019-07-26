@@ -107,7 +107,13 @@ func (c *StandardComparer) compareCell(cell1 []byte, cell2 []byte, columnType *s
 		}
 
 		//now check if there is a custom cell compare
-		return filter.FilterCompareDiff(cell1, cell2, columnType)
+		res := filter.FilterCompareDiff(cell1, cell2, columnType)
+
+		if res {
+			log.Info("diff filtered", zap.String("cv1", cv1), zap.String("cv2", cv2))
+		}
+
+		return res
 	}
 	return true
 }

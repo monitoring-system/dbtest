@@ -19,7 +19,7 @@ func (result *SqlResult) HasResult() bool {
 	return true
 }
 
-// readable query result like mysql shell client
+// draw readable query result like mysql shell client
 func (result *SqlResult) String() string {
 	if result.data == nil || result.header == nil {
 		return "no result"

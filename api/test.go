@@ -28,7 +28,7 @@ func (server *server) NewTest(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, NewErrorResponse(err.Error()))
 	}
 	setDefaultValue(test)
-	result, err := server.executor.Submit(test)
+	result, err := server.executor.Submit(test, false, test.DbRetain)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, NewErrorResponse(err.Error()))
 	} else {

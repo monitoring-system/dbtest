@@ -8,16 +8,14 @@ const String = "string"
 
 // file loader will loader data and queries from a file
 type StringLoader struct {
-	SQLStr string
+	// sql split with ;
+	SQLStr   string
 }
 
-func (loader *StringLoader) LoadData(dbName string) []string {
+func (loader *StringLoader) LoadSql(dbName string) []string {
 	return loader.load(dbName)
 }
 
-func (loader *StringLoader) LoadQuery(dbName string) []string {
-	return loader.load(dbName)
-}
 
 func (loader *StringLoader) Name() string {
 	return String

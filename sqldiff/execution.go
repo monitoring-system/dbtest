@@ -3,6 +3,7 @@ package sqldiff
 import "database/sql"
 
 //execute the sql statement and return the raw data
+// for ddl and insert data in SqlResult will all be empty slice
 func GetQueryResult(db *sql.DB, query string) (*SqlResult, error) {
 	result, err := db.Query(query)
 	if err != nil {

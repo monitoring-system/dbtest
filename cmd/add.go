@@ -33,8 +33,7 @@ var zzFile string
 var loop int
 var loopInterval int
 var queryCount int
-var queryLoader string
-var dataLoader string
+var sqlLoader string
 var name string
 var loaderPath string
 
@@ -44,8 +43,7 @@ func init() {
 	AddTestCmd.Flags().IntVar(&loop, "loop", 1, "how many round the test should be run")
 	AddTestCmd.Flags().IntVar(&loopInterval, "loop-interval", 30, "sleep time(seconds) between each loop")
 	AddTestCmd.Flags().IntVar(&queryCount, "query-count", 1000, "the generated sql count")
-	AddTestCmd.Flags().StringVar(&queryLoader, "query-loader", "randgen", "query loaders, split by comma")
-	AddTestCmd.Flags().StringVar(&dataLoader, "data-loader", "randgen", "data loaders, split by comma")
+	AddTestCmd.Flags().StringVar(&sqlLoader, "sql-loader", "randgen", "query loaders, split by comma")
 	AddTestCmd.Flags().StringVar(&name, "name", "console", "data loaders, split by comma")
 	AddTestCmd.Flags().StringVar(&loaderPath, "loadpath", "", "randgen yy/zz directory path")
 }
@@ -60,8 +58,6 @@ type RandgenConfOpt struct {
 	conf         randgenConf
 	LoopInterval int
 	QueryCount   int
-	QueryLoader  string
-	DataLoader   string
 	Name         string
 }
 
@@ -74,8 +70,6 @@ func NewRandgenConf(yyFile string, zzFile string, loop int) *RandgenConfOpt {
 		},
 		LoopInterval: loopInterval,
 		QueryCount:   queryCount,
-		QueryLoader:  "randgen",
-		DataLoader:   "randgen",
 		Name:         "console",
 	}
 }
@@ -85,11 +79,16 @@ func (c *RandgenConfOpt) Add() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	zzContent, err := ioutil.ReadFile(c.conf.zzFile)
-	if err != nil {
-		log.Fatal(err)
+	zzContent := make([]byte, 0)
+	if c.conf.zzFile != "" {
+		zzContent, err = ioutil.ReadFile(c.conf.zzFile)
+		if err != nil {
+			log.Fatal(err)
+		}
 	}
-	payload := &types.Test{TestName: c.Name, Yy: string(yyContent), Zz: string(zzContent), Loop: c.conf.loop, LoopInterval: c.LoopInterval, QueryLoader: c.QueryLoader, DataLoader: c.DataLoader, Queries: queryCount}
+
+	payload := &types.Test{TestName: c.Name, Yy: string(yyContent), Zz: string(zzContent), Loop: c.conf.loop,
+		LoopInterval: c.LoopInterval, Queries: queryCount, SqlLoader:sqlLoader}
 	resp, err := http.Post("http://localhost:8080/tests", "application/json",
 		strings.NewReader(getPayload(payload)))
 
@@ -110,8 +109,6 @@ func addTest() {
 	opt := NewRandgenConf(yyFile, zzFile, loop)
 	opt.LoopInterval = loopInterval
 	opt.QueryCount = queryCount
-	opt.QueryLoader = queryLoader
-	opt.DataLoader = dataLoader
 	opt.Name = name
 
 	opt.Add()

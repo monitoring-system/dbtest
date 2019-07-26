@@ -6,6 +6,7 @@ import (
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
+	"os"
 )
 
 func main() {
@@ -32,5 +33,8 @@ func main() {
 	}
 
 	rootCmd.AddCommand(cmd.StartCmd, cmd.AddTestCmd, cmd.WatchTestCmd)
-	rootCmd.Execute()
+	if err := rootCmd.Execute(); err != nil{
+		fmt.Println(rootCmd.UsageString())
+		os.Exit(1)
+	}
 }

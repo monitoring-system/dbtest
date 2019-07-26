@@ -13,3 +13,6 @@
 .idea
 results
 dbtest
+*.yy
+*.zz
+*.sql
