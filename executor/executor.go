@@ -8,12 +8,14 @@ import (
 	"github.com/monitoring-system/dbtest/api/types"
 	"github.com/monitoring-system/dbtest/config"
 	"github.com/monitoring-system/dbtest/filter"
+	"github.com/monitoring-system/dbtest/interfaces"
 	"github.com/monitoring-system/dbtest/util"
 	"github.com/pingcap/log"
-	"github.com/xwb1989/sqlparser"
+	"github.com/dqinyuan/sqlparser"
 	"go.uber.org/zap"
 	golog "log"
 	"os"
+	"strings"
 	"sync"
 	"time"
 )
@@ -140,7 +142,7 @@ func (executor *Executor) run(test *types.Test, result *types.TestResult, dbReta
 				zap.String("dbName", dbName))
 			logger.Println("dbName", dbName)
 			// exec
-			data := executor.execSql(scope)
+			data := executor.execSql(scope, scope.test.GetComparor())
 
 			loopResult.End = time.Now().Unix()
 			if err := loopResult.Persistent(); err != nil {
@@ -172,10 +174,7 @@ func (executor *Executor) run(test *types.Test, result *types.TestResult, dbReta
 	}
 }
 
-// ToDo insert  包含ignore关键字的情况 filter
-func (executor *Executor) execSql(scope *testScope) *bytes.Buffer  {
-
-	compare := scope.test.GetComparor()
+func (executor *Executor) execSql(scope *testScope, compare interfaces.SqlResultComparer) *bytes.Buffer  {
 
 	// store all sql in Buf
 	sqlBuf := &bytes.Buffer{}
@@ -190,28 +189,29 @@ func (executor *Executor) execSql(scope *testScope) *bytes.Buffer  {
 		return sqlBuf
 	}
 	execCount := 0
+
+	replacer := strings.NewReplacer("\n", "", "\t", "")
+
 	for _, sql := range sqls {
 		if sql == "" {
 			continue
 		}
 
-		ast, err := sqlparser.Parse(sql)
+		ast, err := sqlparser.ParseStrictDDL(sql)
 		if err != nil {
 			// if run in there, perhaps we need to replace current sql parser
 			scope.logger.Printf("sql parse error %v, sql is %s\n", err, sql)
 			log.Warn("sql parse error", zap.String("sql", sql), zap.Error(err))
-			continue
+		} else {
+			// filter
+			newAst, comment := filter.FiltByCtx(ast)
+			if newAst == nil {
+				scope.logger.Printf("sql filtered: \n    %s,\n    err Type:%s\n", sql, comment)
+				continue
+			}
+			// rewrite sql
+			sql = replacer.Replace(sqlparser.String(newAst))
 		}
-
-		// filter
-		newAst, comment := filter.FiltByCtx(ast)
-		if newAst == nil {
-			scope.logger.Printf("sql filtered: \n    %s,\n    err Type:%s\n", sql, comment)
-			continue
-		}
-
-		// rewrite sql
-		sql = sqlparser.String(newAst)
 
 		// log sql after rewrite
 		sqlBuf.WriteString(sql)
@@ -255,10 +255,4 @@ func persistentData(test *types.Test, round int, data string) {
 	dataLogger, dataFile, _ := getLogger(test, round, "sql", 0)
 	defer dataFile.Close()
 	dataLogger.Println(data)
-}
-
-func persistentQuery(test *types.Test, round int, query string) {
-	dataLogger, dataFile, _ := getLogger(test, round, "query", 0)
-	defer dataFile.Close()
-	dataLogger.Println(query)
 }

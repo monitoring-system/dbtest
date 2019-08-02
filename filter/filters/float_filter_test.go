@@ -2,7 +2,7 @@ package filter
 
 import (
 	"fmt"
-	"github.com/xwb1989/sqlparser"
+	"github.com/dqinyuan/sqlparser"
 	"testing"
 )
 

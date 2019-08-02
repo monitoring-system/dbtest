@@ -1,9 +1,10 @@
 package filter
 
 import (
+	"database/sql"
 	"github.com/monitoring-system/dbtest/util"
 	"github.com/pkg/errors"
-	"github.com/xwb1989/sqlparser"
+	"github.com/dqinyuan/sqlparser"
 )
 
 /*
@@ -11,6 +12,10 @@ if ddl error, we will ignore all sql subsequently about the table
  */
 type TableNotExistFilter struct {
 	ignoreTables *util.Set
+}
+
+func (f *TableNotExistFilter) CompareHook(cv1 string, cv2 string, colType *sql.ColumnType) bool {
+	return false
 }
 
 func (f *TableNotExistFilter) ErrType() string {

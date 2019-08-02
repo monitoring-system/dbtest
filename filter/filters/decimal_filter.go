@@ -1,11 +1,16 @@
 package filter
 
 import (
-	"github.com/xwb1989/sqlparser"
+	"database/sql"
+	"github.com/dqinyuan/sqlparser"
 	"strings"
 )
 
 type DecimalFilter struct {
+}
+
+func (f *DecimalFilter) CompareHook(cv1 string, cv2 string, colType *sql.ColumnType) bool {
+	return false
 }
 
 func (f *DecimalFilter) ErrType() string {

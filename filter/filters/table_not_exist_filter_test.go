@@ -2,7 +2,7 @@ package filter
 
 import (
 	"github.com/pkg/errors"
-	"github.com/xwb1989/sqlparser"
+	"github.com/dqinyuan/sqlparser"
 	"gopkg.in/go-playground/assert.v1"
 	"testing"
 )
